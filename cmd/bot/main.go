@@ -4,10 +4,11 @@ import (
 	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"gitlab.ozon.dev/kshmatov/masterclass1/config"
 )
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI("MyAwesomeBotToken")
+	bot, err := tgbotapi.NewBotAPI(config.ApiKey)
 	if err != nil {
 		log.Panic(err)
 	}
