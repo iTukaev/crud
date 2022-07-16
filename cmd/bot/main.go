@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	log.Println("start main")
 	cmd, err := commander.Init()
 	if err != nil {
 		log.Panic(err)

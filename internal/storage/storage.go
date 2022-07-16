@@ -13,6 +13,7 @@ var UserNotExists = errors.New("user dows not exist")
 var UserExists = errors.New("user exists")
 
 func init() {
+	log.Println("init storage")
 	data = make(map[uint]*User)
 	u, _ := NewUser("Kirill", "123456")
 	if err := Add(u); err != nil {
