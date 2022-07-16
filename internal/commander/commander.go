@@ -3,22 +3,19 @@ package commander
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/kshmatov/masterclass1/config"
-	"gitlab.ozon.dev/kshmatov/masterclass1/internal/storage"
 )
 
-const (
-	listCmd = "list"
-)
+type CmdHandler func(string) string
 
 var UnknownCommand = errors.New("unknown command")
 
 type Commander struct {
-	bot *tgbotapi.BotAPI
+	bot   *tgbotapi.BotAPI
+	route map[string]CmdHandler
 }
 
 func Init() (*Commander, error) {
@@ -31,8 +28,13 @@ func Init() (*Commander, error) {
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	return &Commander{
-		bot: bot,
+		bot:   bot,
+		route: make(map[string]CmdHandler),
 	}, nil
+}
+
+func (c *Commander) RegisterHandler(cmd string, f CmdHandler) {
+	c.route[cmd] = f
 }
 
 func (c *Commander) Run() error {
@@ -46,11 +48,10 @@ func (c *Commander) Run() error {
 		}
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		if cmd := update.Message.Command(); cmd != "" {
-			switch cmd {
-			case listCmd:
-				msg.Text = listFunc()
-			default:
-				msg.Text = UnknownCommand.Error()
+			if f, ok := c.route[cmd]; ok {
+				msg.Text = f(update.Message.CommandArguments())
+			} else {
+				msg.Text = "Unknown command"
 			}
 		} else {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
@@ -62,13 +63,4 @@ func (c *Commander) Run() error {
 		}
 	}
 	return nil
-}
-
-func listFunc() string {
-	data := storage.List()
-	res := make([]string, 0, len(data))
-	for _, v := range data {
-		res = append(res, v.String())
-	}
-	return strings.Join(res, "\n")
 }
