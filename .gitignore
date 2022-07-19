@@ -1,2 +1,5 @@
 .idea
-apikey.go
+config.yaml
+
+# builded application file
+tgbot
