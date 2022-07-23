@@ -7,7 +7,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 
-	"bot/config"
+	"gitlab.ozon.dev/iTukaev/homework-1/config"
 )
 
 type CmdHandler func(string) string

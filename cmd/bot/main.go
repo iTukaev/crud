@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bot/config"
 	"log"
 
-	"bot/internal/commander"
-	"bot/internal/handler"
-	"bot/internal/storage"
+	"gitlab.ozon.dev/iTukaev/homework-1/config"
+	"gitlab.ozon.dev/iTukaev/homework-1/internal/commander"
+	"gitlab.ozon.dev/iTukaev/homework-1/internal/handler"
+	"gitlab.ozon.dev/iTukaev/homework-1/internal/storage"
 )
 
 func main() {

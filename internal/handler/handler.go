@@ -3,7 +3,7 @@ package handler
 import (
 	"github.com/pkg/errors"
 
-	"bot/internal/commander"
+	"gitlab.ozon.dev/iTukaev/homework-1/internal/commander"
 )
 
 var BadCommand = errors.New("unexpected arguments")

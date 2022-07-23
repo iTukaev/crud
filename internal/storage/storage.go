@@ -1,8 +1,9 @@
 package storage
 
 import (
-	"github.com/pkg/errors"
 	"log"
+
+	"github.com/pkg/errors"
 )
 
 var data map[uint]*User

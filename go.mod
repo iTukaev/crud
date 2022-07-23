@@ -1,4 +1,4 @@
-module bot
+module gitlab.ozon.dev/iTukaev/homework-1
 
 go 1.18
 

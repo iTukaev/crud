@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"bot/internal/storage"
+	"gitlab.ozon.dev/iTukaev/homework-1/internal/storage"
 )
 
 const (
@@ -47,9 +47,8 @@ func addCommand(data string) string {
 		return err.Error()
 	}
 
-	err = storage.Add(u)
-	if err != nil {
-		return err.Error()
+	if err = storage.Add(u); err != nil {
+		return errors.Wrap(err, "add error").Error()
 	}
 	return fmt.Sprintf("user: %s added", u.String())
 }
@@ -61,11 +60,11 @@ func delCommand(data string) string {
 		return err.Error()
 	}
 
-	if u, err := storage.Delete(uint(id)); id < 0 || err != nil {
-		return errors.Wrapf(err, "id <%d> invalid", id).Error()
-	} else {
-		return fmt.Sprintf("user: %s deleted", u.String())
+	u, err := storage.Delete(id)
+	if err != nil {
+		return errors.Wrap(err, "delete error").Error()
 	}
+	return fmt.Sprintf("user: %s deleted", u.String())
 }
 
 func updateCommand(data string) string {
@@ -80,11 +79,11 @@ func updateCommand(data string) string {
 		return err.Error()
 	}
 
-	if u, err := storage.Update(id, args[1], args[2]); err != nil {
+	u, err := storage.Update(id, args[1], args[2])
+	if err != nil {
 		return errors.Wrap(err, "update error").Error()
-	} else {
-		return fmt.Sprintf("user: %s updated", u.String())
 	}
+	return fmt.Sprintf("user: %s updated", u.String())
 }
 
 func getIdFromString(data string) (uint, error) {
@@ -93,7 +92,7 @@ func getIdFromString(data string) (uint, error) {
 		return 0, errors.Wrapf(err, "id <%s> is not a number", data)
 	}
 	if id < 0 {
-		return 0, fmt.Errorf("id <%d> invalid, expected number > 0", id)
+		return 0, fmt.Errorf("id <%d> invalid, expected number >= 0", id)
 	}
 	return uint(id), nil
 }

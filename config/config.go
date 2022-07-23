@@ -1,9 +1,10 @@
 package config
 
 import (
+	"log"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"log"
 )
 
 func Init() error {
