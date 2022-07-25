@@ -2,23 +2,22 @@ package storage
 
 import (
 	"log"
-	"strconv"
 
 	"github.com/pkg/errors"
 )
 
 var data map[uint]*User
 
-var UserNotExists = errors.New("user dows not exist")
+var UserNotExists = errors.New("user does not exists")
 var UserExists = errors.New("user exists")
 
-func init() {
+func Init() error {
 	log.Println("init storage")
 	data = make(map[uint]*User)
-	u, _ := NewUser("Kirill", "123456")
-	if err := Add(u); err != nil {
-		log.Panic(err)
+	if err := migrateUsers(); err != nil {
+		return errors.Wrap(err, "migration failed")
 	}
+	return nil
 }
 
 func List() []*User {
@@ -31,24 +30,34 @@ func List() []*User {
 
 func Add(u *User) error {
 	if _, ok := data[u.GetId()]; ok {
-		return errors.Wrap(UserExists, strconv.FormatUint(uint64(u.GetId()), 10))
+		return errors.Wrapf(UserExists, "%d", u.GetId())
 	}
 	data[u.GetId()] = u
 	return nil
 }
 
-func Update(u *User) error {
-	if _, ok := data[u.GetId()]; !ok {
-		return errors.Wrap(UserNotExists, strconv.FormatUint(uint64(u.GetId()), 10))
+func Update(id uint, name, pwd string) (*User, error) {
+	if _, ok := data[id]; !ok {
+		return nil, errors.Wrapf(UserNotExists, "%d", id)
 	}
-	data[u.GetId()] = u
-	return nil
+	u := &User{}
+	_ = u.SetId(id)
+	if err := u.SetName(name); err != nil {
+		return nil, err
+	}
+	if err := u.SetPwd(pwd); err != nil {
+		return nil, err
+	}
+
+	data[id] = u
+	return u, nil
 }
 
-func Delete(id uint) error {
-	if _, ok := data[id]; ok {
+func Delete(id uint) (*User, error) {
+	if u, ok := data[id]; !ok {
+		return nil, errors.Wrapf(UserNotExists, "%d", id)
+	} else {
 		delete(data, id)
-		return nil
+		return u, nil
 	}
-	return errors.Wrap(UserNotExists, strconv.FormatUint(uint64(id), 10))
 }
