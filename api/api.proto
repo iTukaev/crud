@@ -3,12 +3,37 @@ syntax = "proto3";
 package ozon.iTukaev;
 option go_package = "gitlab.ozon.dev/iTukaev/homework/pkg/api;api";
 
+import "google/api/annotations.proto";
+
 service User {
-  rpc UserCreate(UserCreateRequest) returns (UserCreateResponse) {}
-  rpc UserUpdate(UserUpdateRequest) returns (UserUpdateResponse) {}
-  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {}
-  rpc UserGet(UserGetRequest) returns (UserGetResponse) {}
-  rpc UserList(UserListRequest) returns (UserListResponse) {}
+  rpc UserCreate(UserCreateRequest) returns (UserCreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/user"
+      body: "*"
+    };
+  }
+  rpc UserUpdate(UserUpdateRequest) returns (UserUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/user"
+      body: "*"
+    };
+  }
+  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {
+    option (google.api.http) = {
+      delete: "/v1/user"
+      body: "*"
+    };
+  }
+  rpc UserGet(UserGetRequest) returns (UserGetResponse) {
+    option (google.api.http) = {
+      get: "/v1/user/{name}"
+    };
+  }
+  rpc UserList(UserListRequest) returns (UserListResponse) {
+    option (google.api.http) = {
+      get: "/v1/users"
+    };
+  }
 }
 
 // UserCreate endpoint messages

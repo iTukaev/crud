@@ -13,13 +13,13 @@ import (
 )
 
 func main() {
-	log.Println("start server")
+	log.Println("start gRPC server")
 	user := userPkg.MustNew()
 
 	config := yamlPkg.MustNew()
 	config.Init()
 
-	runGRPCServer(user, config.ServerAddr())
+	runGRPCServer(user, config.GRPCAddr())
 }
 
 func runGRPCServer(user userPkg.Interface, addr string) {
@@ -31,7 +31,6 @@ func runGRPCServer(user userPkg.Interface, addr string) {
 	grpcServer := grpc.NewServer()
 	pb.RegisterUserServer(grpcServer, apiPkg.New(user))
 
-	log.Println("start listener")
 	if err = grpcServer.Serve(listener); err != nil {
 		log.Fatalln(err)
 	}

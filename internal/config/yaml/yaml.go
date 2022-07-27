@@ -28,6 +28,10 @@ func (config) BotKey() string {
 	return viper.GetString("key")
 }
 
-func (config) ServerAddr() string {
-	return viper.GetString("addr")
+func (config) GRPCAddr() string {
+	return viper.GetString("grpc")
+}
+
+func (config) HTTPAddr() string {
+	return viper.GetString("http")
 }
