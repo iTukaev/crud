@@ -1,1 +1,5 @@
-key: 5065707701:.............................
+# telegram bot API key
+key: 5065707701:...........
+
+# GRPC server address
+addr: ":9000"

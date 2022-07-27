@@ -23,12 +23,12 @@ type command struct {
 func (c *command) Process(args string) string {
 	user, err := c.user.Get(args)
 	if err != nil {
+		log.Printf("user [%s] get: %v", args, err)
 		if errors.Is(err, userPkg.ErrValidation) {
 			return "invalid arguments"
-		} else if errors.Is(err, localPkg.ErrUserNotExists) || errors.Is(err, localPkg.ErrUserExists) {
+		} else if errors.Is(err, localPkg.ErrUserNotFound) {
 			return err.Error()
 		}
-		log.Printf("user [%s] get: %v", args, err)
 		return "internal error"
 	}
 	return user.String()

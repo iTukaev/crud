@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package ozon.iTukaev;
+option go_package = "gitlab.ozon.dev/iTukaev/homework/pkg/api;api";
+
+service User {
+  rpc UserCreate(UserCreateRequest) returns (UserCreateResponse) {}
+  rpc UserUpdate(UserUpdateRequest) returns (UserUpdateResponse) {}
+  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {}
+  rpc UserGet(UserGetRequest) returns (UserGetResponse) {}
+  rpc UserList(UserListRequest) returns (UserListResponse) {}
+}
+
+// UserCreate endpoint messages
+
+message UserCreateRequest {
+  string name     = 1;
+  string password = 2;
+}
+message UserCreateResponse{}
+
+// UserUpdate endpoint messages
+
+message UserUpdateRequest {
+  string name     = 1;
+  string password = 2;
+}
+message UserUpdateResponse{}
+
+// UserDelete endpoint messages
+
+message UserDeleteRequest {
+  string name     = 1;
+}
+message UserDeleteResponse{}
+
+// UserGet endpoint messages
+
+message UserGetRequest {
+  string name     = 1;
+}
+message UserGetResponse{
+  User user = 1;
+
+  message User {
+    string name     = 1;
+    string password = 2;
+  }
+}
+
+// UserList endpoint messages
+
+message UserListRequest {}
+message UserListResponse{
+  repeated User users = 1;
+
+  message User {
+    string name     = 1;
+    string password = 2;
+  }
+}

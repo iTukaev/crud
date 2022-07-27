@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrUserNotExists = errors.New("user does not exists")
-	ErrUserExists    = errors.New("user exists")
+	ErrUserNotFound      = errors.New("user not found")
+	ErrUserAlreadyExists = errors.New("user already exists")
 )
 
 type cache struct {
@@ -31,7 +31,7 @@ func (c *cache) Add(user models.User) error {
 	defer c.mu.Unlock()
 
 	if _, ok := c.data[user.Name]; ok {
-		return errors.Wrapf(ErrUserExists, "user-name: [%s]", user.Name)
+		return errors.Wrapf(ErrUserAlreadyExists, "user-name: [%s]", user.Name)
 	}
 	c.data[user.Name] = user
 	return nil
@@ -42,7 +42,7 @@ func (c *cache) Update(user models.User) error {
 	defer c.mu.Unlock()
 
 	if _, ok := c.data[user.Name]; !ok {
-		return errors.Wrapf(ErrUserNotExists, "user-name: [%s]", user.Name)
+		return errors.Wrapf(ErrUserNotFound, "user-name: [%s]", user.Name)
 	}
 	c.data[user.Name] = user
 	return nil
@@ -53,7 +53,7 @@ func (c *cache) Delete(name string) error {
 	defer c.mu.Unlock()
 
 	if _, ok := c.data[name]; !ok {
-		return errors.Wrapf(ErrUserNotExists, "user-name: [%s]", name)
+		return errors.Wrapf(ErrUserNotFound, "user-name: [%s]", name)
 	}
 	delete(c.data, name)
 	return nil
@@ -64,7 +64,7 @@ func (c *cache) Get(name string) (models.User, error) {
 	defer c.mu.RUnlock()
 
 	if user, ok := c.data[name]; !ok {
-		return user, errors.Wrapf(ErrUserNotExists, "user-name: [%s]", name)
+		return user, errors.Wrapf(ErrUserNotFound, "user-name: [%s]", name)
 	} else {
 		return user, nil
 	}

@@ -8,13 +8,13 @@ import (
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 )
 
-type core struct{}
+type config struct{}
 
 func MustNew() configPkg.Interface {
-	return &core{}
+	return &config{}
 }
 
-func (*core) Init() {
+func (config) Init() {
 	log.Println("init config")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -24,6 +24,10 @@ func (*core) Init() {
 	}
 }
 
-func (*core) BotKey() string {
+func (config) BotKey() string {
 	return viper.GetString("key")
+}
+
+func (config) ServerAddr() string {
+	return viper.GetString("addr")
 }

@@ -33,12 +33,12 @@ func (c *command) Process(args string) string {
 		Name:     params[0],
 		Password: params[1],
 	}); err != nil {
+		log.Printf("user [%s] update: %v", params[0], err)
 		if errors.Is(err, userPkg.ErrValidation) {
 			return "invalid arguments"
-		} else if errors.Is(err, localPkg.ErrUserNotExists) || errors.Is(err, localPkg.ErrUserExists) {
+		} else if errors.Is(err, localPkg.ErrUserNotFound) {
 			return err.Error()
 		}
-		log.Printf("user [%s] update: %v", params[0], err)
 		return "internal error"
 	}
 	return fmt.Sprintf("user [%s] updated", params[0])
