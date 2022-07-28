@@ -39,7 +39,7 @@ func NewUserClient(cc grpc.ClientConnInterface) UserClient {
 
 func (c *userClient) UserCreate(ctx context.Context, in *UserCreateRequest, opts ...grpc.CallOption) (*UserCreateResponse, error) {
 	out := new(UserCreateResponse)
-	err := c.cc.Invoke(ctx, "/ozon.iTukaev.User/UserCreate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (c *userClient) UserCreate(ctx context.Context, in *UserCreateRequest, opts
 
 func (c *userClient) UserUpdate(ctx context.Context, in *UserUpdateRequest, opts ...grpc.CallOption) (*UserUpdateResponse, error) {
 	out := new(UserUpdateResponse)
-	err := c.cc.Invoke(ctx, "/ozon.iTukaev.User/UserUpdate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserUpdate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *userClient) UserUpdate(ctx context.Context, in *UserUpdateRequest, opts
 
 func (c *userClient) UserDelete(ctx context.Context, in *UserDeleteRequest, opts ...grpc.CallOption) (*UserDeleteResponse, error) {
 	out := new(UserDeleteResponse)
-	err := c.cc.Invoke(ctx, "/ozon.iTukaev.User/UserDelete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (c *userClient) UserDelete(ctx context.Context, in *UserDeleteRequest, opts
 
 func (c *userClient) UserGet(ctx context.Context, in *UserGetRequest, opts ...grpc.CallOption) (*UserGetResponse, error) {
 	out := new(UserGetResponse)
-	err := c.cc.Invoke(ctx, "/ozon.iTukaev.User/UserGet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (c *userClient) UserGet(ctx context.Context, in *UserGetRequest, opts ...gr
 
 func (c *userClient) UserList(ctx context.Context, in *UserListRequest, opts ...grpc.CallOption) (*UserListResponse, error) {
 	out := new(UserListResponse)
-	err := c.cc.Invoke(ctx, "/ozon.iTukaev.User/UserList", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func _User_UserCreate_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.iTukaev.User/UserCreate",
+		FullMethod: "/ozon.GOHW.v1.User/UserCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserCreate(ctx, req.(*UserCreateRequest))
@@ -154,7 +154,7 @@ func _User_UserUpdate_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.iTukaev.User/UserUpdate",
+		FullMethod: "/ozon.GOHW.v1.User/UserUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserUpdate(ctx, req.(*UserUpdateRequest))
@@ -172,7 +172,7 @@ func _User_UserDelete_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.iTukaev.User/UserDelete",
+		FullMethod: "/ozon.GOHW.v1.User/UserDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserDelete(ctx, req.(*UserDeleteRequest))
@@ -190,7 +190,7 @@ func _User_UserGet_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.iTukaev.User/UserGet",
+		FullMethod: "/ozon.GOHW.v1.User/UserGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserGet(ctx, req.(*UserGetRequest))
@@ -208,7 +208,7 @@ func _User_UserList_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.iTukaev.User/UserList",
+		FullMethod: "/ozon.GOHW.v1.User/UserList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserList(ctx, req.(*UserListRequest))
@@ -220,7 +220,7 @@ func _User_UserList_Handler(srv interface{}, ctx context.Context, dec func(inter
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var User_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ozon.iTukaev.User",
+	ServiceName: "ozon.GOHW.v1.User",
 	HandlerType: (*UserServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

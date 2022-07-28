@@ -216,7 +216,7 @@ func RegisterUserHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.iTukaev.User/UserCreate", runtime.WithHTTPPathPattern("/v1/user"))
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserCreate", runtime.WithHTTPPathPattern("/v1/user"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -240,7 +240,7 @@ func RegisterUserHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.iTukaev.User/UserUpdate", runtime.WithHTTPPathPattern("/v1/user"))
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserUpdate", runtime.WithHTTPPathPattern("/v1/user"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -264,7 +264,7 @@ func RegisterUserHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.iTukaev.User/UserDelete", runtime.WithHTTPPathPattern("/v1/user"))
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserDelete", runtime.WithHTTPPathPattern("/v1/user"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -288,7 +288,7 @@ func RegisterUserHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.iTukaev.User/UserGet", runtime.WithHTTPPathPattern("/v1/user/{name}"))
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserGet", runtime.WithHTTPPathPattern("/v1/user/{name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -312,7 +312,7 @@ func RegisterUserHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.iTukaev.User/UserList", runtime.WithHTTPPathPattern("/v1/users"))
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserList", runtime.WithHTTPPathPattern("/v1/users"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -375,7 +375,7 @@ func RegisterUserHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.iTukaev.User/UserCreate", runtime.WithHTTPPathPattern("/v1/user"))
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserCreate", runtime.WithHTTPPathPattern("/v1/user"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -396,7 +396,7 @@ func RegisterUserHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.iTukaev.User/UserUpdate", runtime.WithHTTPPathPattern("/v1/user"))
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserUpdate", runtime.WithHTTPPathPattern("/v1/user"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -417,7 +417,7 @@ func RegisterUserHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.iTukaev.User/UserDelete", runtime.WithHTTPPathPattern("/v1/user"))
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserDelete", runtime.WithHTTPPathPattern("/v1/user"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -438,7 +438,7 @@ func RegisterUserHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.iTukaev.User/UserGet", runtime.WithHTTPPathPattern("/v1/user/{name}"))
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserGet", runtime.WithHTTPPathPattern("/v1/user/{name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -459,7 +459,7 @@ func RegisterUserHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.iTukaev.User/UserList", runtime.WithHTTPPathPattern("/v1/users"))
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/ozon.GOHW.v1.User/UserList", runtime.WithHTTPPathPattern("/v1/users"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
