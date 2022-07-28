@@ -1,6 +1,8 @@
 package list
 
 import (
+	"context"
+
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 )
@@ -15,8 +17,12 @@ type command struct {
 	user userPkg.Interface
 }
 
-func (c *command) Process(args string) string {
-	list := c.user.List()
+func (c *command) Process(ctx context.Context, _ string) string {
+	list, err := c.user.List(ctx)
+	if err != nil {
+		return err.Error()
+	}
+
 	result := ""
 	for i, u := range list {
 		result += u.String()

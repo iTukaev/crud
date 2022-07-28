@@ -1,6 +1,7 @@
 package delete
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -21,8 +22,8 @@ type command struct {
 	user userPkg.Interface
 }
 
-func (c *command) Process(args string) string {
-	if err := c.user.Delete(args); err != nil {
+func (c *command) Process(ctx context.Context, args string) string {
+	if err := c.user.Delete(ctx, args); err != nil {
 		log.Printf("user [%s] delete: %v", args, err)
 		if errors.Is(err, userPkg.ErrValidation) {
 			return "invalid arguments"

@@ -1,6 +1,7 @@
 package help
 
 import (
+	"context"
 	"fmt"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
@@ -19,7 +20,7 @@ type command struct {
 	helps map[string]string
 }
 
-func (c *command) Process(_ string) string {
+func (c *command) Process(_ context.Context, _ string) string {
 	result := fmt.Sprintf("/%s - %s", c.Name(), c.Description())
 	for name, description := range c.helps {
 		result += "\n"

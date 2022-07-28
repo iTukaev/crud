@@ -1,7 +1,9 @@
 package command
 
+import "context"
+
 type Interface interface {
-	Process(args string) string
+	Process(ctx context.Context, args string) string
 	Name() string
 	Description() string
 }

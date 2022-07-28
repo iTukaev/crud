@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -23,13 +24,13 @@ type command struct {
 	user userPkg.Interface
 }
 
-func (c *command) Process(args string) string {
+func (c *command) Process(ctx context.Context, args string) string {
 	params := strings.Split(args, " ")
 	if len(params) != 2 {
 		return "invalid arguments"
 	}
 
-	if err := c.user.Update(models.User{
+	if err := c.user.Update(ctx, models.User{
 		Name:     params[0],
 		Password: params[1],
 	}); err != nil {

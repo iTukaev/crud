@@ -17,7 +17,7 @@ func main() {
 	config := yamlPkg.MustNew()
 	config.Init()
 
-	conn, err := grpc.Dial(config.ServerAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(config.GRPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalln(err)
 	}

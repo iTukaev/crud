@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
@@ -23,7 +24,9 @@ func main() {
 
 	bot := botInit(user, config.BotKey())
 
-	bot.Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	bot.Run(ctx)
 }
 
 func botInit(user userPkg.Interface, apiKey string) botPkg.Interface {

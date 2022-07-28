@@ -1,8 +1,10 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -10,9 +12,13 @@ import (
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
 )
 
+const (
+	contextTimeout = 5 * time.Second
+)
+
 type Interface interface {
 	RegisterCommander(cmd commandPkg.Interface)
-	Run()
+	Run(ctx context.Context)
 }
 
 func MustNew(id string) Interface {
@@ -41,7 +47,7 @@ func (c *commander) RegisterCommander(cmd commandPkg.Interface) {
 	c.route[cmd.Name()] = cmd
 }
 
-func (c *commander) Run() {
+func (c *commander) Run(ctx context.Context) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
@@ -49,16 +55,19 @@ func (c *commander) Run() {
 
 	for update := range updates {
 		if update.Message != nil {
-			c.handleMessage(update.Message)
+			go c.handleMessage(ctx, update.Message)
 		}
 	}
 }
 
-func (c *commander) handleMessage(message *tgbotapi.Message) {
+func (c *commander) handleMessage(ctx context.Context, message *tgbotapi.Message) {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
 	msg := tgbotapi.NewMessage(message.Chat.ID, "")
 	if cmdName := message.Command(); cmdName != "" {
 		if cmd, ok := c.route[cmdName]; ok {
-			msg.Text = cmd.Process(message.CommandArguments())
+			msg.Text = cmd.Process(ctxWithTimeout, message.CommandArguments())
 		} else {
 			msg.Text = fmt.Sprintf("command [%s] not found", cmdName)
 		}

@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"log"
 
 	"github.com/pkg/errors"
@@ -20,8 +21,8 @@ type command struct {
 	user userPkg.Interface
 }
 
-func (c *command) Process(args string) string {
-	user, err := c.user.Get(args)
+func (c *command) Process(ctx context.Context, args string) string {
+	user, err := c.user.Get(ctx, args)
 	if err != nil {
 		log.Printf("user [%s] get: %v", args, err)
 		if errors.Is(err, userPkg.ErrValidation) {
