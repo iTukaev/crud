@@ -22,7 +22,6 @@ type Interface interface {
 }
 
 func MustNew(id string) Interface {
-	log.Println("Init bot")
 	bot, err := tgbotapi.NewBotAPI(id)
 	if err != nil {
 		log.Panic(errors.Wrap(err, "new API bot"))

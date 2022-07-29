@@ -31,10 +31,10 @@ type implementation struct {
 }
 
 func (i *implementation) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, contextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	if err := i.user.Create(ctxWithTimeout, models.User{
+	if err := i.user.Create(ctx, models.User{
 		Name:     in.GetName(),
 		Password: in.GetPassword(),
 	}); err != nil {
@@ -55,10 +55,10 @@ func (i *implementation) UserCreate(ctx context.Context, in *pb.UserCreateReques
 }
 
 func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, contextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	if err := i.user.Update(ctxWithTimeout, models.User{
+	if err := i.user.Update(ctx, models.User{
 		Name:     in.GetName(),
 		Password: in.GetPassword(),
 	}); err != nil {
@@ -77,10 +77,10 @@ func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateReques
 }
 
 func (i *implementation) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, contextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	if err := i.user.Delete(ctxWithTimeout, in.GetName()); err != nil {
+	if err := i.user.Delete(ctx, in.GetName()); err != nil {
 		log.Printf("user [%s] delete: %v", in.GetName(), err)
 
 		switch {
@@ -96,10 +96,10 @@ func (i *implementation) UserDelete(ctx context.Context, in *pb.UserDeleteReques
 }
 
 func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, contextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	user, err := i.user.Get(ctxWithTimeout, in.GetName())
+	user, err := i.user.Get(ctx, in.GetName())
 	if err != nil {
 		log.Printf("user [%s] get: %v", in.GetName(), err)
 
@@ -121,10 +121,10 @@ func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*p
 }
 
 func (i *implementation) UserList(ctx context.Context, _ *pb.UserListRequest) (*pb.UserListResponse, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, contextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	users, err := i.user.List(ctxWithTimeout)
+	users, err := i.user.List(ctx)
 	if errors.Is(err, localPkg.ErrTimeout) {
 		return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
 	}

@@ -15,7 +15,7 @@ func MustNew() configPkg.Interface {
 }
 
 func (config) Init() {
-	log.Println("init config")
+	log.Println("Init config")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
