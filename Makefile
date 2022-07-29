@@ -1,10 +1,10 @@
 .PHONY: run
 
 run: build
-	./tgbot
+	./app
 
 build:
-	go build -o tgbot ./cmd/bot/main.go
+	go build -o app ./cmd/app/app.go
 
 LOCAL_BIN:=$(CURDIR)/bin
 .PHONY: .deps
