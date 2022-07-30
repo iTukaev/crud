@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package ozon.GOHW.v1;
+option go_package = "gitlab.ozon.dev/iTukaev/homework/pkg/api;api";
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+// OpenAPIv2 base options
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "User CRUD service";
+    version: "1.0";
+  };
+
+  schemes: HTTP;
+  consumes: "application/json";
+  produces: "application/json";
+};
+
+service User {
+  rpc UserCreate(UserCreateRequest) returns (UserCreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/user"
+      body: "*"
+    };
+  }
+  rpc UserUpdate(UserUpdateRequest) returns (UserUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/user"
+      body: "*"
+    };
+  }
+  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {
+    option (google.api.http) = {
+      delete: "/v1/user"
+      body: "*"
+    };
+  }
+  rpc UserGet(UserGetRequest) returns (UserGetResponse) {
+    option (google.api.http) = {
+      get: "/v1/user/{name}"
+    };
+  }
+  rpc UserList(UserListRequest) returns (UserListResponse) {
+    option (google.api.http) = {
+      get: "/v1/users"
+    };
+  }
+}
+
+// UserCreate endpoint messages
+
+message UserCreateRequest {
+  string name     = 1;
+  string password = 2;
+}
+message UserCreateResponse{}
+
+// UserUpdate endpoint messages
+
+message UserUpdateRequest {
+  string name     = 1;
+  string password = 2;
+}
+message UserUpdateResponse{}
+
+// UserDelete endpoint messages
+
+message UserDeleteRequest {
+  string name     = 1;
+}
+message UserDeleteResponse{}
+
+// UserGet endpoint messages
+
+message UserGetRequest {
+  string name     = 1;
+}
+message UserGetResponse{
+  User user = 1;
+
+  message User {
+    string name     = 1;
+    string password = 2;
+  }
+}
+
+// UserList endpoint messages
+
+message UserListRequest {}
+message UserListResponse{
+  repeated User users = 1;
+
+  message User {
+    string name     = 1;
+    string password = 2;
+  }
+}
