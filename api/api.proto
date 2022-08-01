@@ -1,12 +1,109 @@
 syntax = "proto3";
 
-package ozon.GOHW.v1;
+package gitlab.ozon.dev.iTukaev.homework.api;
 option go_package = "gitlab.ozon.dev/iTukaev/homework/pkg/api;api";
 
 import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
+import "models/user.proto";
+import "google/api/field_behavior.proto";
 
-// OpenAPIv2 base options
+service User {
+
+  // Create new user
+  //
+  // Add new user to DB and cache
+  rpc UserCreate(UserCreateRequest) returns (UserCreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/user"
+      body: "user"
+    };
+  }
+
+  // Update user information
+  //
+  // Update user's password, email and full name in DB and cache
+  rpc UserUpdate(UserUpdateRequest) returns (UserUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/user/{name}"
+      body: "profile"
+    };
+  }
+
+  // Delete user
+  //
+  // Delete user from DB and cache
+  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {
+    option (google.api.http) = {
+      delete: "/v1/user/{name}"
+    };
+  }
+
+  // Get user information
+  //
+  // Returns user information by user name
+  rpc UserGet(UserGetRequest) returns (UserGetResponse) {
+    option (google.api.http) = {
+      get: "/v1/user/{name}"
+    };
+  }
+
+  // Get users list
+  //
+  // Returns all users from DB
+  rpc UserList(UserListRequest) returns (UserListResponse) {
+    option (google.api.http) = {
+      get: "/v1/users"
+    };
+  }
+}
+
+
+// UserCreate endpoint messages
+message UserCreateRequest {
+  api.models.User user = 1;
+}
+message UserCreateResponse{}
+
+
+// UserUpdate endpoint messages
+message UserUpdateRequest {
+  string name                = 1 [(google.api.field_behavior) = REQUIRED];
+  api.models.Profile profile = 2 [(google.api.field_behavior) = REQUIRED];
+}
+message UserUpdateResponse{}
+
+
+// UserDelete endpoint messages
+message UserDeleteRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+message UserDeleteResponse{}
+
+// UserGet endpoint messages
+message UserGetRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+message UserGetResponse{
+  api.models.User user = 1;
+}
+
+// UserList endpoint messages
+message UserListRequest {
+  // Sort flag. If true, fields are sorted in descending order.
+  bool order = 1;
+
+  // Maximum number of rows.
+  uint32 limit = 2;
+
+  // Page number.
+  uint32 offset = 3;
+}
+message UserListResponse{
+  repeated api.models.User users = 1;
+}
+
+//OpenAPIv2 base options
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
     title: "User CRUD service";
@@ -17,83 +114,3 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   consumes: "application/json";
   produces: "application/json";
 };
-
-service User {
-  rpc UserCreate(UserCreateRequest) returns (UserCreateResponse) {
-    option (google.api.http) = {
-      post: "/v1/user"
-      body: "*"
-    };
-  }
-  rpc UserUpdate(UserUpdateRequest) returns (UserUpdateResponse) {
-    option (google.api.http) = {
-      put: "/v1/user"
-      body: "*"
-    };
-  }
-  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {
-    option (google.api.http) = {
-      delete: "/v1/user"
-      body: "*"
-    };
-  }
-  rpc UserGet(UserGetRequest) returns (UserGetResponse) {
-    option (google.api.http) = {
-      get: "/v1/user/{name}"
-    };
-  }
-  rpc UserList(UserListRequest) returns (UserListResponse) {
-    option (google.api.http) = {
-      get: "/v1/users"
-    };
-  }
-}
-
-// UserCreate endpoint messages
-
-message UserCreateRequest {
-  string name     = 1;
-  string password = 2;
-}
-message UserCreateResponse{}
-
-// UserUpdate endpoint messages
-
-message UserUpdateRequest {
-  string name     = 1;
-  string password = 2;
-}
-message UserUpdateResponse{}
-
-// UserDelete endpoint messages
-
-message UserDeleteRequest {
-  string name     = 1;
-}
-message UserDeleteResponse{}
-
-// UserGet endpoint messages
-
-message UserGetRequest {
-  string name     = 1;
-}
-message UserGetResponse{
-  User user = 1;
-
-  message User {
-    string name     = 1;
-    string password = 2;
-  }
-}
-
-// UserList endpoint messages
-
-message UserListRequest {}
-message UserListResponse{
-  repeated User users = 1;
-
-  message User {
-    string name     = 1;
-    string password = 2;
-  }
-}

@@ -7,9 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	localPkg "gitlab.ozon.dev/iTukaev/homework/internal/cache/local"
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
-	localPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/cache/local"
 )
 
 func New(user userPkg.Interface) commandPkg.Interface {

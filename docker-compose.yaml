@@ -22,7 +22,7 @@ services:
       - server
     image: swaggerapi/swagger-ui
     volumes:
-      - $PWD/pkg/api/api.swagger.json:/data/api.swagger.json
+      - $PWD/swagger/api.swagger.json:/data/api.swagger.json
     restart: always
     network_mode: host
     environment:

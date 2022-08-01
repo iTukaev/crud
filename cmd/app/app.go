@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"log"
 	"net"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	"gitlab.ozon.dev/iTukaev/homework/swagger"
 )
 
 func main() {
@@ -29,10 +31,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	user := userPkg.MustNew()
-
 	config := yamlPkg.MustNew()
 	config.Init()
+
+	user := userPkg.MustNew(ctx, config.PGConfig())
 
 	go runGRPCServer(user, config.GRPCAddr())
 	go runHTTPServer(config.GRPCAddr(), config.HTTPAddr())
@@ -90,11 +92,14 @@ func runHTTPServer(grpcSrv, httpSrv string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mux := runtime.NewServeMux()
+	gwMux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	if err := pb.RegisterUserHandlerFromEndpoint(ctx, mux, grpcSrv, opts); err != nil {
+	if err := pb.RegisterUserHandlerFromEndpoint(ctx, gwMux, grpcSrv, opts); err != nil {
 		log.Fatalln(err)
 	}
+
+	mux := swagger.Mux("/swagger")
+	mux.Handle("/", gwMux)
 
 	log.Println("Start HTTP")
 	if err := http.ListenAndServe(httpSrv, mux); err != nil {

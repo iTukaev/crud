@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/viper"
 
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
+	pgModels "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres/models"
 )
 
 type config struct{}
@@ -34,4 +35,12 @@ func (config) GRPCAddr() string {
 
 func (config) HTTPAddr() string {
 	return viper.GetString("http")
+}
+
+func (config) PGConfig() pgModels.Config {
+	var pg pgModels.Config
+	if err := viper.UnmarshalKey("pg", &pg); err != nil {
+		log.Fatalf("Postgres config unmarshal error: %v", err)
+	}
+	return pg
 }

@@ -2,13 +2,21 @@ package user
 
 import (
 	"context"
-	"log"
+	"time"
 
 	"github.com/pkg/errors"
 
-	cachePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/cache"
-	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/cache/local"
+	cachePkg "gitlab.ozon.dev/iTukaev/homework/internal/cache"
+	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/cache/local"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
+	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+	postgrePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
+	pgModels "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres/models"
+)
+
+const (
+	dbTimeout    = 5 * time.Second
+	cacheTimeout = 5 * time.Second
 )
 
 var (
@@ -20,20 +28,18 @@ type Interface interface {
 	Update(ctx context.Context, user models.User) error
 	Delete(ctx context.Context, name string) error
 	Get(ctx context.Context, name string) (models.User, error)
-	List(ctx context.Context) ([]models.User, error)
+	List(ctx context.Context, order bool, limit, offset uint32) ([]models.User, error)
 }
 
-func MustNew() Interface {
-	cache := localCachePkg.New()
-	if err := cache.Migrate(); err != nil {
-		log.Fatalf("Migration error: %v", err)
-	}
+func MustNew(ctx context.Context, pg pgModels.Config) Interface {
 	return &core{
-		cache: cache,
+		db:    postgrePkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName),
+		cache: localCachePkg.New(),
 	}
 }
 
 type core struct {
+	db    repoPkg.Interface
 	cache cachePkg.Interface
 }
 
@@ -44,35 +50,78 @@ func (c *core) Create(ctx context.Context, user models.User) error {
 	if user.Password == "" {
 		return errors.Wrap(ErrValidation, "field: [password] cannot be empty")
 	}
+	if user.Email == "" {
+		return errors.Wrap(ErrValidation, "field: [email] cannot be empty")
+	}
+	if user.FullName == "" {
+		return errors.Wrap(ErrValidation, "field: [full_name] cannot be empty")
+	}
+	user.CreatedAt = time.Now().Unix()
 
-	return c.cache.Add(ctx, user)
+	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
+	defer cancelDb()
+	if err := c.db.UserCreate(ctxDb, user); err != nil {
+		return err
+	}
+
+	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
+	defer cancelCache()
+	c.cache.Set(ctxCache, user)
+	return nil
 }
 
 func (c *core) Update(ctx context.Context, user models.User) error {
 	if user.Name == "" {
 		return errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
-	if user.Password == "" {
-		return errors.Wrap(ErrValidation, "field: [password] cannot be empty")
+
+	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
+	defer cancelDb()
+	if err := c.db.UserUpdate(ctxDb, user); err != nil {
+		return err
 	}
 
-	return c.cache.Update(ctx, user)
+	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
+	defer cancelCache()
+	c.cache.Set(ctxCache, user)
+	return nil
 }
 
 func (c *core) Delete(ctx context.Context, name string) error {
 	if name == "" {
 		return errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
-	return c.cache.Delete(ctx, name)
+
+	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
+	defer cancelDb()
+	if err := c.db.UserDelete(ctxDb, name); err != nil {
+		return err
+	}
+
+	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
+	defer cancelCache()
+	c.cache.Delete(ctxCache, name)
+	return nil
 }
 
 func (c *core) Get(ctx context.Context, name string) (models.User, error) {
 	if name == "" {
 		return models.User{}, errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
-	return c.cache.Get(ctx, name)
+
+	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
+	defer cancelCache()
+	if user, ok := c.cache.Get(ctxCache, name); ok {
+		return user, nil
+	}
+
+	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
+	defer cancelDb()
+	return c.db.UserGet(ctxDb, name)
 }
 
-func (c *core) List(ctx context.Context) ([]models.User, error) {
-	return c.cache.List(ctx)
+func (c *core) List(ctx context.Context, order bool, limit, offset uint32) ([]models.User, error) {
+	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
+	defer cancelDb()
+	return c.db.UserList(ctxDb, order, limit, offset)
 }

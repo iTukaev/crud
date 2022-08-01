@@ -1,0 +1,327 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "User CRUD service",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "User"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/user": {
+      "post": {
+        "summary": "Create new user",
+        "description": "Add new user to DB and cache",
+        "operationId": "User_UserCreate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiUserCreateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/modelsUser"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/v1/user/{name}": {
+      "get": {
+        "summary": "Get user information",
+        "description": "Returns user information by user name",
+        "operationId": "User_UserGet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiUserGetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      },
+      "delete": {
+        "summary": "Delete user",
+        "description": "Delete user from DB and cache",
+        "operationId": "User_UserDelete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiUserDeleteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      },
+      "put": {
+        "summary": "Update user information",
+        "description": "Update user's password, email and full name in DB and cache",
+        "operationId": "User_UserUpdate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiUserUpdateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "profile",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/modelsProfile"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "summary": "Get users list",
+        "description": "Returns all users from DB",
+        "operationId": "User_UserList",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiUserListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "order",
+            "description": "Sort flag. If true, fields are sorted in descending order.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "limit",
+            "description": "Maximum number of rows.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "offset",
+            "description": "Page number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "apiUserCreateResponse": {
+      "type": "object"
+    },
+    "apiUserDeleteResponse": {
+      "type": "object"
+    },
+    "apiUserGetResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/modelsUser"
+        }
+      }
+    },
+    "apiUserListResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsUser"
+          }
+        }
+      }
+    },
+    "apiUserUpdateResponse": {
+      "type": "object"
+    },
+    "modelsProfile": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "User password."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address. Unique field."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "User's full name."
+        }
+      },
+      "description": "User's short info."
+    },
+    "modelsUser": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "User name. Unique field.",
+          "required": [
+            "name"
+          ]
+        },
+        "password": {
+          "type": "string",
+          "description": "User password.",
+          "required": [
+            "password"
+          ]
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address. Unique field.",
+          "required": [
+            "email"
+          ]
+        },
+        "fullName": {
+          "type": "string",
+          "description": "User's full name.",
+          "required": [
+            "fullName"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64",
+          "description": "User's full name.",
+          "readOnly": true
+        }
+      },
+      "description": "User information.",
+      "required": [
+        "name",
+        "password",
+        "email",
+        "fullName"
+      ]
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
