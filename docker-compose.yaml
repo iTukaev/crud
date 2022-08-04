@@ -20,6 +20,8 @@ services:
 #      - '9001:9001'
 
   postgres:
+    depends_on:
+      - pgbouncer
     image: postgres:14.4
     environment:
       POSTGRES_USER: user
@@ -33,4 +35,16 @@ services:
       - ./postgres.conf:/etc/postgresql/postgresql.conf
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     ports:
-      - '5432:5432'
+      - 5432:5432
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.17.0
+    container_name: 'pgbouncer-user-service'
+    restart: always
+    network_mode: host
+    volumes:
+      - ./pgbouncer:/var/log/pgbouncer/pgbouncer.log
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ./userlist.txt:/etc/pgbouncer/userlist.txt
+    ports:
+      - 6432:6432
