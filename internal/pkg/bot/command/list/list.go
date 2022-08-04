@@ -18,20 +18,19 @@ type command struct {
 }
 
 func (c *command) Process(ctx context.Context, _ string) string {
-	//list, err := c.user.List(ctx)
-	//if err != nil {
-	//	return err.Error()
-	//}
-	//
-	//result := ""
-	//for i, u := range list {
-	//	result += u.String()
-	//	if i != len(list)-1 {
-	//		result += "\n"
-	//	}
-	//}
-	//return result
-	return ""
+	list, err := c.user.List(ctx, false, 10, 1)
+	if err != nil {
+		return err.Error()
+	}
+
+	result := ""
+	for i, u := range list {
+		result += u.String()
+		if i != len(list)-1 {
+			result += "\n"
+		}
+	}
+	return result
 }
 
 func (*command) Name() string {
