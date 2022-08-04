@@ -1,32 +1,36 @@
 version: "3"
 
 services:
-  server:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    container_name: app
-    environment:
-      PATH: /go/src/app
-    command: app
-    restart: always
-    network_mode: host
-    volumes:
-      - $PWD/config.yaml:/config.yaml
-    ports:
-      - '9000:9000'
-      - '9001:9001'
+#  server:
+#    depends_on:
+#      - postgres
+#    build:
+#      context: .
+#      dockerfile: ./Dockerfile
+#    container_name: 'app-user-service'
+#    environment:
+#      PATH: /go/src/app
+#    command: app
+#    restart: always
+#    network_mode: host
+#    volumes:
+#      - $PWD/config.yaml:/config.yaml
+#    ports:
+#      - '9000:9000'
+#      - '9001:9001'
 
-  swagger-ui:
-    depends_on:
-      - server
-    image: swaggerapi/swagger-ui
-    volumes:
-      - $PWD/swagger/api.swagger.json:/data/api.swagger.json
+  postgres:
+    image: postgres:14.4
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: candy_shop
+    container_name: 'postgresql-user-service'
     restart: always
     network_mode: host
-    environment:
-      SWAGGER_JSON: /data/api.swagger.json
-    container_name: swagger-ui
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     ports:
-      - '80:8080'
+      - '5432:5432'

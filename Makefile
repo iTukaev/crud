@@ -15,3 +15,8 @@ LOCAL_BIN:=$(CURDIR)/bin
 .PHONY: buf
 buf:
 	buf generate api
+
+MIGRATION_DIR:=./migrations
+.PHONY: migrate
+migrate:
+	goose -dir=$(MIGRATION_DIR) create $(NAME) sql

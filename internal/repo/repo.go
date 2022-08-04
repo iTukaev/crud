@@ -11,6 +11,6 @@ type Interface interface {
 	UserUpdate(ctx context.Context, user models.User) error
 	UserDelete(ctx context.Context, name string) error
 	UserGet(ctx context.Context, name string) (models.User, error)
-	UserList(ctx context.Context, order bool, limit, offset uint32) ([]models.User, error)
+	UserList(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error)
 	Close()
 }

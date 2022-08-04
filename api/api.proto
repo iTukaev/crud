@@ -63,7 +63,9 @@ service User {
 message UserCreateRequest {
   api.models.User user = 1;
 }
-message UserCreateResponse{}
+message UserCreateResponse{
+  api.models.User user = 1;
+}
 
 
 // UserUpdate endpoint messages
@@ -71,7 +73,9 @@ message UserUpdateRequest {
   string name                = 1 [(google.api.field_behavior) = REQUIRED];
   api.models.Profile profile = 2 [(google.api.field_behavior) = REQUIRED];
 }
-message UserUpdateResponse{}
+message UserUpdateResponse{
+  api.models.User user = 1;
+}
 
 
 // UserDelete endpoint messages
@@ -94,10 +98,10 @@ message UserListRequest {
   bool order = 1;
 
   // Maximum number of rows.
-  uint32 limit = 2;
+  uint64 limit = 2;
 
   // Page number.
-  uint32 offset = 3;
+  uint64 offset = 3;
 }
 message UserListResponse{
   repeated api.models.User users = 1;

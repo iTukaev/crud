@@ -137,8 +137,12 @@ func (i *implementation) UserList(ctx context.Context, in *pb.UserListRequest) (
 	defer cancel()
 
 	users, err := i.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
-	if errors.Is(err, localPkg.ErrTimeout) {
-		return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
+	if err != nil {
+		log.Printf("user list: %v", err)
+		if errors.Is(err, localPkg.ErrTimeout) {
+			return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
+		}
+		return &pb.UserListResponse{}, status.Error(codes.Internal, err.Error())
 	}
 
 	resp := make([]*pbModels.User, 0, len(users))

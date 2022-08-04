@@ -20,7 +20,7 @@ message User {
     // User's full name.
     string full_name = 4 [(google.api.field_behavior) = REQUIRED];
 
-    // User's full name.
+    // User's creation time in UNIX format.
     int64 created_at = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 

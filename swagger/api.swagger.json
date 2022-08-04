@@ -185,16 +185,16 @@
             "description": "Maximum number of rows.",
             "in": "query",
             "required": false,
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uint64"
           },
           {
             "name": "offset",
             "description": "Page number.",
             "in": "query",
             "required": false,
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uint64"
           }
         ],
         "tags": [
@@ -284,7 +284,7 @@
         "createdAt": {
           "type": "string",
           "format": "int64",
-          "description": "User's full name.",
+          "description": "User's creation time in UNIX format.",
           "readOnly": true
         }
       },

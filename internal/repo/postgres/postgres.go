@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/pkg/errors"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
@@ -20,6 +21,8 @@ const (
 	emailField     = "email"
 	fullNameField  = "full_name"
 	createdAtField = "created_at"
+
+	desc = " DESC"
 )
 
 func MustNew(ctx context.Context, host, port, user, password, dbname string) repoPkg.Interface {
@@ -45,38 +48,44 @@ type repo struct {
 
 func (r *repo) UserCreate(ctx context.Context, user models.User) error {
 	query, args, err := squirrel.Insert(usersTable).
-		Columns(nameField, passwordField, emailField, fullNameField).
-		Values(user.Name, user.Password, user.Email, user.FullName).
+		Columns(nameField, passwordField, emailField, fullNameField, createdAtField).
+		Values(user.Name, user.Password, user.Email, user.FullName, user.CreatedAt).
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
-	fmt.Println(query)
 	if err != nil {
-		return fmt.Errorf("UserCreate: to sql: %w", err)
+		return errors.Wrap(err, "postgres UserCreate: to sql")
 	}
-	row := r.pool.QueryRow(ctx, query, args...)
-	if err = row.Scan(&user.Name); err != nil {
-		return fmt.Errorf("UserCreate: insert: %w", err)
+
+	if tag, err := r.pool.Exec(ctx, query, args...); err != nil || tag.RowsAffected() != 1 {
+		return errors.Wrap(err, "postgres UserCreate: insert")
 	}
 
 	return nil
 }
 
 func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
-	query, args, err := squirrel.Update(usersTable).
+	builder := squirrel.Update(usersTable).
 		Where(squirrel.Eq{
 			nameField: user.Name,
-		}).
-		Set(passwordField, user.Password).
-		Set(emailField, user.Email).
-		Set(fullNameField, user.FullName).
-		ToSql()
-	fmt.Println(query)
-	if err != nil {
-		return fmt.Errorf("UserUpdate: to sql: %w", err)
+		})
+
+	if user.Email != "" {
+		builder = builder.Set(emailField, user.Email)
 	}
-	row := r.pool.QueryRow(ctx, query, args...)
-	if err = row.Scan(&user.Name); err != nil {
-		return fmt.Errorf("UserUpdate: update: %w", err)
+	if user.Password != "" {
+		builder = builder.Set(passwordField, user.Password)
+	}
+	if user.FullName != "" {
+		builder = builder.Set(fullNameField, user.FullName)
+	}
+
+	query, args, err := builder.PlaceholderFormat(squirrel.Dollar).ToSql()
+	if err != nil {
+		return errors.Wrap(err, "postgres UserUpdate: to sql")
+	}
+
+	if tag, err := r.pool.Exec(ctx, query, args...); err != nil || tag.RowsAffected() != 1 {
+		return errors.Wrap(err, "postgres UserUpdate: update")
 	}
 
 	return nil
@@ -86,53 +95,70 @@ func (r *repo) UserDelete(ctx context.Context, name string) error {
 	query, args, err := squirrel.Delete(usersTable).
 		Where(squirrel.Eq{
 			nameField: name,
-		}).ToSql()
-	fmt.Println(query)
+		}).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
 	if err != nil {
-		return fmt.Errorf("UserDelete: to sql: %w", err)
+		return errors.Wrap(err, "postgres UserDelete: to sql")
 	}
-	row := r.pool.QueryRow(ctx, query, args...)
-	if err = row.Scan(&name); err != nil {
-		return fmt.Errorf("UserDelete: delete: %w", err)
+
+	if tag, err := r.pool.Exec(ctx, query, args...); err != nil || tag.RowsAffected() != 1 {
+		return errors.Wrap(err, "postgres UserDelete: delete")
 	}
 
 	return nil
 }
 
 func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
-	query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField).
+	query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField, createdAtField).
 		From(usersTable).
 		Where(squirrel.Eq{
 			nameField: name,
-		}).ToSql()
-	fmt.Println(query)
+		}).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
 	if err != nil {
-		return models.User{}, fmt.Errorf("UserGet: to sql: %w", err)
+		return models.User{}, errors.Wrap(err, "postgres UserGet: to sql")
 	}
 	row := r.pool.QueryRow(ctx, query, args...)
 	var user models.User
-	if err = row.Scan(&user.Name, &user.Password, &user.Email, &user.FullName); err != nil {
-		return models.User{}, fmt.Errorf("UserGet: get: %w", err)
+	if err = row.Scan(&user.Name, &user.Password, &user.Email, &user.FullName, &user.CreatedAt); err != nil {
+		return models.User{}, errors.Wrap(err, "postgres UserGet: get")
 	}
 
 	return user, nil
 }
 
-func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint32) ([]models.User, error) {
-	//query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField).
-	//	From(usersTable).
-	//	ToSql()
-	//fmt.Println(query)
-	//if err != nil {
-	//	return nil, fmt.Errorf("Repository.UserGet: to sql: %w", err)
-	//}
-	//row := r.pool.
-	//var user models.User
-	//if err = row.Scan(&user.Name, &user.Password, &user.Email, &user.FullName); err != nil {
-	//	return nil, fmt.Errorf("Repository.UserGet: get: %w", err)
-	//}
+func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error) {
+	var sort string
+	if order {
+		sort = desc
+	}
+	query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField, createdAtField).
+		From(usersTable).
+		Limit(limit).
+		Offset(offset).
+		OrderBy(nameField + sort).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "postgres UserList: to sql")
+	}
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "postgres UserList: query")
+	}
 
-	return nil, nil
+	users := make([]models.User, 0)
+	for rows.Next() {
+		var user models.User
+		if err = rows.Scan(&user.Name, &user.Password, &user.Email, &user.FullName, &user.CreatedAt); err != nil {
+			return nil, errors.Wrap(err, "postgres UserList: row scan")
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 func (r *repo) Close() {

@@ -28,7 +28,7 @@ type Interface interface {
 	Update(ctx context.Context, user models.User) error
 	Delete(ctx context.Context, name string) error
 	Get(ctx context.Context, name string) (models.User, error)
-	List(ctx context.Context, order bool, limit, offset uint32) ([]models.User, error)
+	List(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error)
 }
 
 func MustNew(ctx context.Context, pg pgModels.Config) Interface {
@@ -58,15 +58,11 @@ func (c *core) Create(ctx context.Context, user models.User) error {
 	}
 	user.CreatedAt = time.Now().Unix()
 
-	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
-	defer cancelDb()
-	if err := c.db.UserCreate(ctxDb, user); err != nil {
+	if err := c.db.UserCreate(ctx, user); err != nil {
 		return err
 	}
 
-	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
-	defer cancelCache()
-	c.cache.Set(ctxCache, user)
+	c.cache.Set(ctx, user)
 	return nil
 }
 
@@ -75,15 +71,11 @@ func (c *core) Update(ctx context.Context, user models.User) error {
 		return errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
 
-	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
-	defer cancelDb()
-	if err := c.db.UserUpdate(ctxDb, user); err != nil {
+	if err := c.db.UserUpdate(ctx, user); err != nil {
 		return err
 	}
 
-	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
-	defer cancelCache()
-	c.cache.Set(ctxCache, user)
+	c.cache.Set(ctx, user)
 	return nil
 }
 
@@ -92,15 +84,11 @@ func (c *core) Delete(ctx context.Context, name string) error {
 		return errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
 
-	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
-	defer cancelDb()
-	if err := c.db.UserDelete(ctxDb, name); err != nil {
+	if err := c.db.UserDelete(ctx, name); err != nil {
 		return err
 	}
 
-	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
-	defer cancelCache()
-	c.cache.Delete(ctxCache, name)
+	c.cache.Delete(ctx, name)
 	return nil
 }
 
@@ -109,19 +97,13 @@ func (c *core) Get(ctx context.Context, name string) (models.User, error) {
 		return models.User{}, errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
 
-	ctxCache, cancelCache := context.WithTimeout(ctx, cacheTimeout)
-	defer cancelCache()
-	if user, ok := c.cache.Get(ctxCache, name); ok {
+	if user, ok := c.cache.Get(ctx, name); ok {
 		return user, nil
 	}
 
-	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
-	defer cancelDb()
-	return c.db.UserGet(ctxDb, name)
+	return c.db.UserGet(ctx, name)
 }
 
-func (c *core) List(ctx context.Context, order bool, limit, offset uint32) ([]models.User, error) {
-	ctxDb, cancelDb := context.WithTimeout(ctx, dbTimeout)
-	defer cancelDb()
-	return c.db.UserList(ctxDb, order, limit, offset)
+func (c *core) List(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error) {
+	return c.db.UserList(ctx, order, limit, offset)
 }

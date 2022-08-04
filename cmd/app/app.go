@@ -9,7 +9,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apiPkg "gitlab.ozon.dev/iTukaev/homework/internal/api"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
@@ -22,7 +22,6 @@ import (
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
-	"gitlab.ozon.dev/iTukaev/homework/swagger"
 )
 
 func main() {
@@ -37,7 +36,7 @@ func main() {
 	user := userPkg.MustNew(ctx, config.PGConfig())
 
 	go runGRPCServer(user, config.GRPCAddr())
-	go runHTTPServer(config.GRPCAddr(), config.HTTPAddr())
+	go runHTTPServer(user, config.HTTPAddr())
 
 	runBot(ctx, user, config.BotKey())
 }
@@ -69,12 +68,12 @@ func runBot(ctx context.Context, user userPkg.Interface, apiKey string) {
 	})
 	bot.RegisterCommander(commandHelp)
 
-	log.Println("Start bot")
+	log.Printf("Start TG bot")
 	bot.Run(ctx)
 }
 
-func runGRPCServer(user userPkg.Interface, addr string) {
-	listener, err := net.Listen("tcp", addr)
+func runGRPCServer(user userPkg.Interface, grpcSrv string) {
+	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -88,20 +87,31 @@ func runGRPCServer(user userPkg.Interface, addr string) {
 	}
 }
 
-func runHTTPServer(grpcSrv, httpSrv string) {
+func runHTTPServer(user userPkg.Interface, httpSrv string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	gwMux := runtime.NewServeMux()
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	if err := pb.RegisterUserHandlerFromEndpoint(ctx, gwMux, grpcSrv, opts); err != nil {
-		log.Fatalln(err)
+	gwMux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				EmitUnpopulated: true,
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", gwMux)
+	fs := http.FileServer(http.Dir("./swagger"))
+	mux.Handle("/swagger/", http.StripPrefix("/swagger/", fs))
+
+	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiPkg.New(user)); err != nil {
+		log.Fatalln("HTTP gateway register:", err)
 	}
 
-	mux := swagger.Mux("/swagger")
-	mux.Handle("/", gwMux)
-
-	log.Println("Start HTTP")
+	log.Println("Start HTTP gateway")
 	if err := http.ListenAndServe(httpSrv, mux); err != nil {
 		log.Fatalln(err)
 	}
