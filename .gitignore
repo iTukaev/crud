@@ -3,3 +3,7 @@ config.yaml
 
 # builded application file
 app
+
+# DB directories
+postgresql
+pgbouncer

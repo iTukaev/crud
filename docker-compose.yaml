@@ -1,24 +1,6 @@
 version: "3"
 
 services:
-#  server:
-#    depends_on:
-#      - postgres
-#    build:
-#      context: .
-#      dockerfile: ./Dockerfile
-#    container_name: 'app-user-service'
-#    environment:
-#      PATH: /go/src/app
-#    command: app
-#    restart: always
-#    network_mode: host
-#    volumes:
-#      - $PWD/config.yaml:/config.yaml
-#    ports:
-#      - '9000:9000'
-#      - '9001:9001'
-
   postgres:
     image: postgres:14.4
     environment:
@@ -34,3 +16,34 @@ services:
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     ports:
       - '5432:5432'
+
+  pgbouncer:
+    depends_on:
+      - postgres
+    image: edoburu/pgbouncer:1.17.0
+    container_name: 'pgbouncer-user-service'
+    restart: always
+    network_mode: host
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ./userlist.txt:/etc/pgbouncer/userlist.txt
+    ports:
+      - '6432:6432'
+
+  server:
+    depends_on:
+      - postgres
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: 'app-user-service'
+    environment:
+      PATH: /go/src/app
+    command: app
+    restart: always
+    network_mode: host
+    volumes:
+      - $PWD/config.yaml:/config.yaml
+    ports:
+      - '9000:9000'
+      - '9001:9001'
