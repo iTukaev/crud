@@ -10,13 +10,8 @@ import (
 	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/cache/local"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
-	postgrePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
+	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pgModels "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres/models"
-)
-
-const (
-	dbTimeout    = 5 * time.Second
-	cacheTimeout = 5 * time.Second
 )
 
 var (
@@ -33,7 +28,7 @@ type Interface interface {
 
 func MustNew(ctx context.Context, pg pgModels.Config) Interface {
 	return &core{
-		db:    postgrePkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName),
+		db:    postgresPkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName),
 		cache: localCachePkg.New(),
 	}
 }
@@ -58,6 +53,9 @@ func (c *core) Create(ctx context.Context, user models.User) error {
 	}
 	user.CreatedAt = time.Now().Unix()
 
+	if u, _ := c.db.UserGet(ctx, user.Name); u.Name == user.Name {
+		return localCachePkg.ErrUserAlreadyExists
+	}
 	if err := c.db.UserCreate(ctx, user); err != nil {
 		return err
 	}
@@ -71,6 +69,9 @@ func (c *core) Update(ctx context.Context, user models.User) error {
 		return errors.Wrap(ErrValidation, "field: [name] cannot be empty")
 	}
 
+	if u, _ := c.db.UserGet(ctx, user.Name); u.Name != user.Name {
+		return localCachePkg.ErrUserNotFound
+	}
 	if err := c.db.UserUpdate(ctx, user); err != nil {
 		return err
 	}
