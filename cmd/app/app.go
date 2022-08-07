@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	apiPkg "gitlab.ozon.dev/iTukaev/homework/internal/api"
+	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	botPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot"
 	cmdAddPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/add"
@@ -21,6 +21,9 @@ import (
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
+	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
+	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
 
@@ -31,9 +34,19 @@ func main() {
 	defer cancel()
 
 	config := yamlPkg.MustNew()
-	config.Init()
 
-	user := userPkg.MustNew(ctx, config.PGConfig())
+	start(ctx, config)
+}
+
+func start(ctx context.Context, config configPkg.Interface) {
+	var data repoPkg.Interface
+	if config.Local() {
+		data = localCachePkg.New(config.WorkersCount())
+	} else {
+		pg := config.PGConfig()
+		data = postgresPkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName)
+	}
+	user := userPkg.MustNew(data)
 
 	go runGRPCServer(user, config.GRPCAddr())
 	go runHTTPServer(user, config.HTTPAddr())

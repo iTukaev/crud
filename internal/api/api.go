@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	localPkg "gitlab.ozon.dev/iTukaev/homework/internal/cache/local"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 )
@@ -46,16 +46,16 @@ func (i *implementation) UserCreate(ctx context.Context, in *pb.UserCreateReques
 		switch {
 		case errors.Is(err, userPkg.ErrValidation):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, localPkg.ErrUserAlreadyExists):
+		case errors.Is(err, errorsPkg.ErrUserAlreadyExists):
 			return nil, status.Error(codes.AlreadyExists, err.Error())
-		case errors.Is(err, localPkg.ErrTimeout):
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.UserCreateResponse{}, status.Error(codes.OK, "succeed")
+	return &pb.UserCreateResponse{}, nil
 }
 
 func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
@@ -71,16 +71,16 @@ func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateReques
 		log.Printf("user [%s] update: %v", in.GetName(), err)
 
 		switch {
-		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, localPkg.ErrUserNotFound):
+		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, errorsPkg.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, localPkg.ErrTimeout):
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.UserUpdateResponse{}, status.Error(codes.OK, "succeed")
+	return &pb.UserUpdateResponse{}, nil
 }
 
 func (i *implementation) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
@@ -91,16 +91,16 @@ func (i *implementation) UserDelete(ctx context.Context, in *pb.UserDeleteReques
 		log.Printf("user [%s] delete: %v", in.GetName(), err)
 
 		switch {
-		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, localPkg.ErrUserNotFound):
+		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, errorsPkg.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, localPkg.ErrTimeout):
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.UserDeleteResponse{}, status.Error(codes.OK, "succeed")
+	return &pb.UserDeleteResponse{}, nil
 }
 
 func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
@@ -112,9 +112,9 @@ func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*p
 		log.Printf("user [%s] get: %v", in.GetName(), err)
 
 		switch {
-		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, localPkg.ErrUserNotFound):
+		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, errorsPkg.ErrUserNotFound):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, localPkg.ErrTimeout):
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
@@ -129,7 +129,7 @@ func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*p
 			FullName:  user.FullName,
 			CreatedAt: user.CreatedAt,
 		},
-	}, status.Error(codes.OK, "succeed")
+	}, nil
 }
 
 func (i *implementation) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
@@ -139,7 +139,7 @@ func (i *implementation) UserList(ctx context.Context, in *pb.UserListRequest) (
 	users, err := i.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
 	if err != nil {
 		log.Printf("user list: %v", err)
-		if errors.Is(err, localPkg.ErrTimeout) {
+		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 		return &pb.UserListResponse{}, status.Error(codes.Internal, err.Error())
@@ -158,5 +158,5 @@ func (i *implementation) UserList(ctx context.Context, in *pb.UserListRequest) (
 
 	return &pb.UserListResponse{
 		Users: resp,
-	}, status.Error(codes.OK, "succeed")
+	}, nil
 }

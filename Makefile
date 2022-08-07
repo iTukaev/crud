@@ -17,6 +17,10 @@ buf:
 	buf generate api
 
 MIGRATION_DIR:=./migrations
+.PHONY: create
+create:
+	goose -dir=$(MIGRATION_DIR) create $(NAME) sql
+
 .PHONY: migrate
 migrate:
-	goose -dir=$(MIGRATION_DIR) create $(NAME) sql
+	./migrate.sh

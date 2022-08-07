@@ -2,4 +2,16 @@
 key: 5065707701:...........
 
 # GRPC server address
-addr: ":9000"
+grpc: ":9001"
+http: ":9000"
+
+# Local cache parameters
+local: true
+workers: 10
+
+# Postgres config
+host: localhost
+port: 6432 # pgbouncer used, 5432 for PostrgeSQL
+user: user
+password: password
+db_name: candy_shop

@@ -5,6 +5,7 @@ go 1.18
 require github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 
 require (
+	github.com/Masterminds/squirrel v1.5.3
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.0
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/pkg/errors v0.9.1
@@ -16,8 +17,6 @@ require (
 )
 
 require (
-	github.com/Masterminds/squirrel v1.5.3 // indirect
-	github.com/flowchartsman/swaggerui v0.0.0-20210303154956-0e71c297862e // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect

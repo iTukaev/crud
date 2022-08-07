@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v4"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"log"
 
 	"github.com/Masterminds/squirrel"
@@ -37,6 +39,7 @@ func MustNew(ctx context.Context, host, port, user, password, dbname string) rep
 		log.Fatal("ping database error: ", err)
 	}
 
+	log.Println("With PostgreSQL started")
 	return &repo{
 		pool: pool,
 	}
@@ -56,7 +59,7 @@ func (r *repo) UserCreate(ctx context.Context, user models.User) error {
 		return errors.Wrap(err, "postgres UserCreate: to sql")
 	}
 
-	if tag, err := r.pool.Exec(ctx, query, args...); err != nil || tag.RowsAffected() != 1 {
+	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserCreate: insert")
 	}
 
@@ -84,7 +87,7 @@ func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
 		return errors.Wrap(err, "postgres UserUpdate: to sql")
 	}
 
-	if tag, err := r.pool.Exec(ctx, query, args...); err != nil || tag.RowsAffected() != 1 {
+	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserUpdate: update")
 	}
 
@@ -102,7 +105,7 @@ func (r *repo) UserDelete(ctx context.Context, name string) error {
 		return errors.Wrap(err, "postgres UserDelete: to sql")
 	}
 
-	if tag, err := r.pool.Exec(ctx, query, args...); err != nil || tag.RowsAffected() != 1 {
+	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserDelete: delete")
 	}
 
@@ -123,6 +126,9 @@ func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
 	row := r.pool.QueryRow(ctx, query, args...)
 	var user models.User
 	if err = row.Scan(&user.Name, &user.Password, &user.Email, &user.FullName, &user.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, errorsPkg.ErrUserNotFound
+		}
 		return models.User{}, errors.Wrap(err, "postgres UserGet: get")
 	}
 
