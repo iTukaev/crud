@@ -15,7 +15,6 @@ import (
 func main() {
 	log.Println("start client")
 	config := yamlPkg.MustNew()
-	config.Init()
 
 	conn, err := grpc.Dial(config.GRPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -27,10 +26,7 @@ func main() {
 	ctx := context.Background()
 	ctx = metadata.AppendToOutgoingContext(ctx, "custom", "hello")
 
-	response, err := client.UserCreate(ctx, &pb.UserCreateRequest{
-		Name:     "Paulo",
-		Password: "123",
-	})
+	response, err := client.UserCreate(ctx, &pb.UserCreateRequest{})
 	if err != nil {
 		log.Fatalln(err)
 	}

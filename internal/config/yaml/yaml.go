@@ -34,6 +34,10 @@ func (config) HTTPAddr() string {
 	return viper.GetString("http")
 }
 
+func (config) RepoAddr() string {
+	return viper.GetString("repo")
+}
+
 func (config) PGConfig() pgModels.Config {
 	var pg pgModels.Config
 	if err := viper.UnmarshalKey("pg", &pg); err != nil {

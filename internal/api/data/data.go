@@ -1,4 +1,4 @@
-package api
+package data
 
 import (
 	"context"
@@ -21,31 +21,30 @@ const (
 )
 
 func New(user userPkg.Interface) pb.UserServer {
-	return &implementation{
+	return &core{
 		user: user,
 	}
 }
 
-type implementation struct {
+type core struct {
 	user userPkg.Interface
 	pb.UnimplementedUserServer
 }
 
-func (i *implementation) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
+func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	if err := i.user.Create(ctx, models.User{
-		Name:     in.User.GetName(),
-		Password: in.User.GetPassword(),
-		Email:    in.User.GetEmail(),
-		FullName: in.User.GetFullName(),
+	if err := c.user.Create(ctx, models.User{
+		Name:      in.User.GetName(),
+		Password:  in.User.GetPassword(),
+		Email:     in.User.GetEmail(),
+		FullName:  in.User.GetFullName(),
+		CreatedAt: in.User.GetCreatedAt(),
 	}); err != nil {
 		log.Printf("user [%s] create: %v", in.User.GetName(), err)
 
 		switch {
-		case errors.Is(err, userPkg.ErrValidation):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
 		case errors.Is(err, errorsPkg.ErrUserAlreadyExists):
 			return nil, status.Error(codes.AlreadyExists, err.Error())
 		case errors.Is(err, errorsPkg.ErrTimeout):
@@ -58,11 +57,11 @@ func (i *implementation) UserCreate(ctx context.Context, in *pb.UserCreateReques
 	return &pb.UserCreateResponse{}, nil
 }
 
-func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
+func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	if err := i.user.Update(ctx, models.User{
+	if err := c.user.Update(ctx, models.User{
 		Name:     in.GetName(),
 		Password: in.Profile.GetPassword(),
 		Email:    in.Profile.GetEmail(),
@@ -70,10 +69,7 @@ func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateReques
 	}); err != nil {
 		log.Printf("user [%s] update: %v", in.GetName(), err)
 
-		switch {
-		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, errorsPkg.ErrUserNotFound):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, errorsPkg.ErrTimeout):
+		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
@@ -83,17 +79,14 @@ func (i *implementation) UserUpdate(ctx context.Context, in *pb.UserUpdateReques
 	return &pb.UserUpdateResponse{}, nil
 }
 
-func (i *implementation) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
+func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	if err := i.user.Delete(ctx, in.GetName()); err != nil {
+	if err := c.user.Delete(ctx, in.GetName()); err != nil {
 		log.Printf("user [%s] delete: %v", in.GetName(), err)
 
-		switch {
-		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, errorsPkg.ErrUserNotFound):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, errorsPkg.ErrTimeout):
+		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
@@ -103,18 +96,15 @@ func (i *implementation) UserDelete(ctx context.Context, in *pb.UserDeleteReques
 	return &pb.UserDeleteResponse{}, nil
 }
 
-func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
+func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	user, err := i.user.Get(ctx, in.GetName())
+	user, err := c.user.Get(ctx, in.GetName())
 	if err != nil {
 		log.Printf("user [%s] get: %v", in.GetName(), err)
 
-		switch {
-		case errors.Is(err, userPkg.ErrValidation), errors.Is(err, errorsPkg.ErrUserNotFound):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, errorsPkg.ErrTimeout):
+		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
@@ -132,11 +122,11 @@ func (i *implementation) UserGet(ctx context.Context, in *pb.UserGetRequest) (*p
 	}, nil
 }
 
-func (i *implementation) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
+func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	users, err := i.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
+	users, err := c.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
 	if err != nil {
 		log.Printf("user list: %v", err)
 		if errors.Is(err, errorsPkg.ErrTimeout) {

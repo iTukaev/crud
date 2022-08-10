@@ -30,20 +30,20 @@ services:
     ports:
       - '6432:6432'
 
-  server:
-    depends_on:
-      - postgres
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    container_name: 'app-user-service'
-    environment:
-      PATH: /go/src/app
-    command: app
-    restart: always
-    network_mode: host
-    volumes:
-      - $PWD/config.yaml:/config.yaml
-    ports:
-      - '9000:9000'
-      - '9001:9001'
+#  server:
+#    depends_on:
+#      - postgres
+#    build:
+#      context: .
+#      dockerfile: ./Dockerfile
+#    container_name: 'app-user-service'
+#    environment:
+#      PATH: /go/src/app
+#    command: app
+#    restart: always
+#    network_mode: host
+#    volumes:
+#      - $PWD/config.yaml:/config.yaml
+#    ports:
+#      - '9000:9000'
+#      - '9001:9001'

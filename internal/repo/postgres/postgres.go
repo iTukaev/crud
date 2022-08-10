@@ -3,16 +3,16 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"log"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 )
 
 const (
