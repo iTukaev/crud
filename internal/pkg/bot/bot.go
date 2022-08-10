@@ -28,7 +28,6 @@ func MustNew(id string) Interface {
 	}
 
 	bot.Debug = false
-	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	return &commander{
 		bot:   bot,

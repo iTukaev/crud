@@ -8,9 +8,10 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apiPkg "gitlab.ozon.dev/iTukaev/homework/internal/api"
+	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	botPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot"
 	cmdAddPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/add"
@@ -20,6 +21,9 @@ import (
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
+	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
+	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
 
@@ -29,13 +33,23 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	user := userPkg.MustNew()
-
 	config := yamlPkg.MustNew()
-	config.Init()
+
+	start(ctx, config)
+}
+
+func start(ctx context.Context, config configPkg.Interface) {
+	var data repoPkg.Interface
+	if config.Local() {
+		data = localCachePkg.New(config.WorkersCount())
+	} else {
+		pg := config.PGConfig()
+		data = postgresPkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName)
+	}
+	user := userPkg.MustNew(data)
 
 	go runGRPCServer(user, config.GRPCAddr())
-	go runHTTPServer(config.GRPCAddr(), config.HTTPAddr())
+	go runHTTPServer(user, config.HTTPAddr())
 
 	runBot(ctx, user, config.BotKey())
 }
@@ -67,12 +81,12 @@ func runBot(ctx context.Context, user userPkg.Interface, apiKey string) {
 	})
 	bot.RegisterCommander(commandHelp)
 
-	log.Println("Start bot")
+	log.Printf("Start TG bot")
 	bot.Run(ctx)
 }
 
-func runGRPCServer(user userPkg.Interface, addr string) {
-	listener, err := net.Listen("tcp", addr)
+func runGRPCServer(user userPkg.Interface, grpcSrv string) {
+	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -86,17 +100,31 @@ func runGRPCServer(user userPkg.Interface, addr string) {
 	}
 }
 
-func runHTTPServer(grpcSrv, httpSrv string) {
+func runHTTPServer(user userPkg.Interface, httpSrv string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mux := runtime.NewServeMux()
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	if err := pb.RegisterUserHandlerFromEndpoint(ctx, mux, grpcSrv, opts); err != nil {
-		log.Fatalln(err)
+	gwMux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				EmitUnpopulated: true,
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", gwMux)
+	fs := http.FileServer(http.Dir("./swagger"))
+	mux.Handle("/swagger/", http.StripPrefix("/swagger/", fs))
+
+	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiPkg.New(user)); err != nil {
+		log.Fatalln("HTTP gateway register:", err)
 	}
 
-	log.Println("Start HTTP")
+	log.Println("Start HTTP gateway")
 	if err := http.ListenAndServe(httpSrv, mux); err != nil {
 		log.Fatalln(err)
 	}

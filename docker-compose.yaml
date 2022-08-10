@@ -1,11 +1,42 @@
 version: "3"
 
 services:
+  postgres:
+    image: postgres:14.4
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: candy_shop
+    container_name: 'postgresql-user-service'
+    restart: always
+    network_mode: host
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - '5432:5432'
+
+  pgbouncer:
+    depends_on:
+      - postgres
+    image: edoburu/pgbouncer:1.17.0
+    container_name: 'pgbouncer-user-service'
+    restart: always
+    network_mode: host
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ./userlist.txt:/etc/pgbouncer/userlist.txt
+    ports:
+      - '6432:6432'
+
   server:
+    depends_on:
+      - postgres
     build:
       context: .
       dockerfile: ./Dockerfile
-    container_name: app
+    container_name: 'app-user-service'
     environment:
       PATH: /go/src/app
     command: app
@@ -16,17 +47,3 @@ services:
     ports:
       - '9000:9000'
       - '9001:9001'
-
-  swagger-ui:
-    depends_on:
-      - server
-    image: swaggerapi/swagger-ui
-    volumes:
-      - $PWD/pkg/api/api.swagger.json:/data/api.swagger.json
-    restart: always
-    network_mode: host
-    environment:
-      SWAGGER_JSON: /data/api.swagger.json
-    container_name: swagger-ui
-    ports:
-      - '80:8080'

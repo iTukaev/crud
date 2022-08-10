@@ -22,10 +22,25 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserClient interface {
+	// Create new user
+	//
+	// Add new user to DB and cache
 	UserCreate(ctx context.Context, in *UserCreateRequest, opts ...grpc.CallOption) (*UserCreateResponse, error)
+	// Update user information
+	//
+	// Update user's password, email and full name in DB and cache
 	UserUpdate(ctx context.Context, in *UserUpdateRequest, opts ...grpc.CallOption) (*UserUpdateResponse, error)
+	// Delete user
+	//
+	// Delete user from DB and cache
 	UserDelete(ctx context.Context, in *UserDeleteRequest, opts ...grpc.CallOption) (*UserDeleteResponse, error)
+	// Get user information
+	//
+	// Returns user information by user name
 	UserGet(ctx context.Context, in *UserGetRequest, opts ...grpc.CallOption) (*UserGetResponse, error)
+	// Get users list
+	//
+	// Returns all users from DB
 	UserList(ctx context.Context, in *UserListRequest, opts ...grpc.CallOption) (*UserListResponse, error)
 }
 
@@ -39,7 +54,7 @@ func NewUserClient(cc grpc.ClientConnInterface) UserClient {
 
 func (c *userClient) UserCreate(ctx context.Context, in *UserCreateRequest, opts ...grpc.CallOption) (*UserCreateResponse, error) {
 	out := new(UserCreateResponse)
-	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserCreate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/UserCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +63,7 @@ func (c *userClient) UserCreate(ctx context.Context, in *UserCreateRequest, opts
 
 func (c *userClient) UserUpdate(ctx context.Context, in *UserUpdateRequest, opts ...grpc.CallOption) (*UserUpdateResponse, error) {
 	out := new(UserUpdateResponse)
-	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserUpdate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/UserUpdate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +72,7 @@ func (c *userClient) UserUpdate(ctx context.Context, in *UserUpdateRequest, opts
 
 func (c *userClient) UserDelete(ctx context.Context, in *UserDeleteRequest, opts ...grpc.CallOption) (*UserDeleteResponse, error) {
 	out := new(UserDeleteResponse)
-	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserDelete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/UserDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +81,7 @@ func (c *userClient) UserDelete(ctx context.Context, in *UserDeleteRequest, opts
 
 func (c *userClient) UserGet(ctx context.Context, in *UserGetRequest, opts ...grpc.CallOption) (*UserGetResponse, error) {
 	out := new(UserGetResponse)
-	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserGet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/UserGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +90,7 @@ func (c *userClient) UserGet(ctx context.Context, in *UserGetRequest, opts ...gr
 
 func (c *userClient) UserList(ctx context.Context, in *UserListRequest, opts ...grpc.CallOption) (*UserListResponse, error) {
 	out := new(UserListResponse)
-	err := c.cc.Invoke(ctx, "/ozon.GOHW.v1.User/UserList", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/UserList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +101,25 @@ func (c *userClient) UserList(ctx context.Context, in *UserListRequest, opts ...
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility
 type UserServer interface {
+	// Create new user
+	//
+	// Add new user to DB and cache
 	UserCreate(context.Context, *UserCreateRequest) (*UserCreateResponse, error)
+	// Update user information
+	//
+	// Update user's password, email and full name in DB and cache
 	UserUpdate(context.Context, *UserUpdateRequest) (*UserUpdateResponse, error)
+	// Delete user
+	//
+	// Delete user from DB and cache
 	UserDelete(context.Context, *UserDeleteRequest) (*UserDeleteResponse, error)
+	// Get user information
+	//
+	// Returns user information by user name
 	UserGet(context.Context, *UserGetRequest) (*UserGetResponse, error)
+	// Get users list
+	//
+	// Returns all users from DB
 	UserList(context.Context, *UserListRequest) (*UserListResponse, error)
 	mustEmbedUnimplementedUserServer()
 }
@@ -136,7 +166,7 @@ func _User_UserCreate_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.GOHW.v1.User/UserCreate",
+		FullMethod: "/gitlab.ozon.dev.iTukaev.homework.api.User/UserCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserCreate(ctx, req.(*UserCreateRequest))
@@ -154,7 +184,7 @@ func _User_UserUpdate_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.GOHW.v1.User/UserUpdate",
+		FullMethod: "/gitlab.ozon.dev.iTukaev.homework.api.User/UserUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserUpdate(ctx, req.(*UserUpdateRequest))
@@ -172,7 +202,7 @@ func _User_UserDelete_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.GOHW.v1.User/UserDelete",
+		FullMethod: "/gitlab.ozon.dev.iTukaev.homework.api.User/UserDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserDelete(ctx, req.(*UserDeleteRequest))
@@ -190,7 +220,7 @@ func _User_UserGet_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.GOHW.v1.User/UserGet",
+		FullMethod: "/gitlab.ozon.dev.iTukaev.homework.api.User/UserGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserGet(ctx, req.(*UserGetRequest))
@@ -208,7 +238,7 @@ func _User_UserList_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ozon.GOHW.v1.User/UserList",
+		FullMethod: "/gitlab.ozon.dev.iTukaev.homework.api.User/UserList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).UserList(ctx, req.(*UserListRequest))
@@ -220,7 +250,7 @@ func _User_UserList_Handler(srv interface{}, ctx context.Context, dec func(inter
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var User_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ozon.GOHW.v1.User",
+	ServiceName: "gitlab.ozon.dev.iTukaev.homework.api.User",
 	HandlerType: (*UserServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

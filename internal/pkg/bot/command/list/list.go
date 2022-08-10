@@ -18,7 +18,7 @@ type command struct {
 }
 
 func (c *command) Process(ctx context.Context, _ string) string {
-	list, err := c.user.List(ctx)
+	list, err := c.user.List(ctx, false, 10, 1)
 	if err != nil {
 		return err.Error()
 	}
