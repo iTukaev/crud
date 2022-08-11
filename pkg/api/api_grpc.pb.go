@@ -42,6 +42,10 @@ type UserClient interface {
 	//
 	// Returns all users from DB
 	UserList(ctx context.Context, in *UserListRequest, opts ...grpc.CallOption) (*UserListResponse, error)
+	// Get all users
+	//
+	// Returns all users from DB
+	UserAllList(ctx context.Context, in *UserAllListRequest, opts ...grpc.CallOption) (User_UserAllListClient, error)
 }
 
 type userClient struct {
@@ -97,6 +101,38 @@ func (c *userClient) UserList(ctx context.Context, in *UserListRequest, opts ...
 	return out, nil
 }
 
+func (c *userClient) UserAllList(ctx context.Context, in *UserAllListRequest, opts ...grpc.CallOption) (User_UserAllListClient, error) {
+	stream, err := c.cc.NewStream(ctx, &User_ServiceDesc.Streams[0], "/gitlab.ozon.dev.iTukaev.homework.api.User/UserAllList", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &userUserAllListClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type User_UserAllListClient interface {
+	Recv() (*UserAllListResponse, error)
+	grpc.ClientStream
+}
+
+type userUserAllListClient struct {
+	grpc.ClientStream
+}
+
+func (x *userUserAllListClient) Recv() (*UserAllListResponse, error) {
+	m := new(UserAllListResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // UserServer is the server API for User service.
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility
@@ -121,6 +157,10 @@ type UserServer interface {
 	//
 	// Returns all users from DB
 	UserList(context.Context, *UserListRequest) (*UserListResponse, error)
+	// Get all users
+	//
+	// Returns all users from DB
+	UserAllList(*UserAllListRequest, User_UserAllListServer) error
 	mustEmbedUnimplementedUserServer()
 }
 
@@ -142,6 +182,9 @@ func (UnimplementedUserServer) UserGet(context.Context, *UserGetRequest) (*UserG
 }
 func (UnimplementedUserServer) UserList(context.Context, *UserListRequest) (*UserListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UserList not implemented")
+}
+func (UnimplementedUserServer) UserAllList(*UserAllListRequest, User_UserAllListServer) error {
+	return status.Errorf(codes.Unimplemented, "method UserAllList not implemented")
 }
 func (UnimplementedUserServer) mustEmbedUnimplementedUserServer() {}
 
@@ -246,6 +289,27 @@ func _User_UserList_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_UserAllList_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(UserAllListRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(UserServer).UserAllList(m, &userUserAllListServer{stream})
+}
+
+type User_UserAllListServer interface {
+	Send(*UserAllListResponse) error
+	grpc.ServerStream
+}
+
+type userUserAllListServer struct {
+	grpc.ServerStream
+}
+
+func (x *userUserAllListServer) Send(m *UserAllListResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // User_ServiceDesc is the grpc.ServiceDesc for User service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -274,6 +338,12 @@ var User_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _User_UserList_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "UserAllList",
+			Handler:       _User_UserAllList_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api.proto",
 }

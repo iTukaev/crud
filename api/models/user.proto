@@ -27,11 +27,11 @@ message User {
 // User's short info.
 message Profile {
     // User password.
-    string password = 1 [(google.api.field_behavior) = OPTIONAL];
+    optional string password = 1;
 
     // User's email address. Unique field.
-    string email = 2 [(google.api.field_behavior) = OPTIONAL];
+    optional string email = 2 [(google.api.field_behavior) = OPTIONAL];
 
     // User's full name.
-    string full_name = 3 [(google.api.field_behavior) = OPTIONAL];
+    optional string full_name = 3 [(google.api.field_behavior) = OPTIONAL];
 }

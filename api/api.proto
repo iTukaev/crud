@@ -56,6 +56,11 @@ service User {
       get: "/v1/users"
     };
   }
+
+  // Get all users
+  //
+  // Returns all users from DB
+  rpc UserAllList(UserAllListRequest) returns (stream UserAllListResponse) {}
 }
 
 
@@ -104,6 +109,18 @@ message UserListRequest {
   uint64 offset = 3;
 }
 message UserListResponse{
+  repeated api.models.User users = 1;
+}
+
+// UserAllList endpoint messages
+message UserAllListRequest {
+  // Sort flag. If true, fields are sorted in descending order.
+  bool order = 1;
+
+  // Maximum number of rows.
+  uint64 limit = 2;
+}
+message UserAllListResponse{
   repeated api.models.User users = 1;
 }
 

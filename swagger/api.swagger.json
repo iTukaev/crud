@@ -204,8 +204,24 @@
     }
   },
   "definitions": {
+    "apiUserAllListResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/modelsUser"
+          }
+        }
+      }
+    },
     "apiUserCreateResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/modelsUser"
+        }
+      }
     },
     "apiUserDeleteResponse": {
       "type": "object"
@@ -230,7 +246,12 @@
       }
     },
     "apiUserUpdateResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/modelsUser"
+        }
+      }
     },
     "modelsProfile": {
       "type": "object",

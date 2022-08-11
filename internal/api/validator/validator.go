@@ -98,3 +98,33 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 
 	return resp, nil
 }
+
+func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllListServer) error {
+	offset := uint64(0)
+	for {
+		resp, err := c.user.UserList(stream.Context(), &pb.UserListRequest{
+			Order:  in.GetOrder(),
+			Limit:  in.GetLimit(),
+			Offset: offset,
+		})
+		if err != nil {
+			log.Printf("user list: %v", err)
+			return err
+		}
+
+		if len(resp.Users) == 0 {
+			break
+		}
+
+		if err = stream.Send(&pb.UserAllListResponse{
+			Users: resp.Users,
+		}); err != nil {
+			log.Printf("stream send user list: %v", err)
+			return err
+		}
+		time.Sleep(500 * time.Millisecond)
+		offset++
+	}
+
+	return nil
+}

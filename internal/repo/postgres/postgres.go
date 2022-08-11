@@ -143,13 +143,14 @@ func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) (
 	query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField, createdAtField).
 		From(usersTable).
 		Limit(limit).
-		Offset(offset).
+		Offset(offset * limit).
 		OrderBy(nameField + sort).
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "postgres UserList: to sql")
 	}
+
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "postgres UserList: query")

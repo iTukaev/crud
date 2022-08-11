@@ -32,9 +32,9 @@ func (c *command) Process(ctx context.Context, args string) string {
 	if _, err := c.api.UserUpdate(ctx, &pb.UserUpdateRequest{
 		Name: params[0],
 		Profile: &pbModels.Profile{
-			Password: params[1],
-			Email:    params[2],
-			FullName: params[3],
+			Password: &params[1],
+			Email:    &params[2],
+			FullName: &params[3],
 		},
 	}); err != nil {
 		log.Printf("user [%s] update: %v", params[0], err)
