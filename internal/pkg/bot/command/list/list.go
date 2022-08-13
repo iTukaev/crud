@@ -46,7 +46,7 @@ func (c *command) Process(ctx context.Context, args string) string {
 		Offset: offset,
 	})
 	if err != nil {
-		log.Printf("user list, arguments [%s]: %v", args, err)
+		log.Printf("user list, arguments [%s]: %v\n", args, err)
 		if st, ok := status.FromError(err); ok {
 			return st.Message()
 		}

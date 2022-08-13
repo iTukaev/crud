@@ -53,7 +53,7 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface) {
 
 	listener, err := net.Listen("tcp", config.RepoAddr())
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Listener create:", err)
 	}
 
 	grpcServer := grpc.NewServer()

@@ -37,7 +37,7 @@ func (c *command) Process(ctx context.Context, args string) string {
 			FullName: &params[3],
 		},
 	}); err != nil {
-		log.Printf("user [%s] update: %v", params[0], err)
+		log.Printf("user [%s] update: %v\n", params[0], err)
 		if st, ok := status.FromError(err); ok {
 			return st.Message()
 		}

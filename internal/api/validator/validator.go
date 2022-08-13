@@ -2,6 +2,7 @@ package validator
 
 import (
 	"context"
+	"io"
 	"log"
 	"time"
 
@@ -40,7 +41,7 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 
 	resp, err := c.user.UserCreate(ctx, in)
 	if err != nil {
-		log.Printf("user [%s] create: %v", in.User.GetName(), err)
+		log.Printf("user [%s] create: %v\n", in.User.GetName(), err)
 		return nil, err
 	}
 
@@ -54,7 +55,7 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 
 	resp, err := c.user.UserUpdate(ctx, in)
 	if err != nil {
-		log.Printf("user [%s] update: %v", in.GetName(), err)
+		log.Printf("user [%s] update: %v\n", in.GetName(), err)
 		return nil, err
 	}
 
@@ -68,7 +69,7 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 
 	resp, err := c.user.UserDelete(ctx, in)
 	if err != nil {
-		log.Printf("user [%s] delete: %v", in.GetName(), err)
+		log.Printf("user [%s] delete: %v\n", in.GetName(), err)
 		return nil, err
 	}
 
@@ -82,7 +83,7 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 
 	resp, err := c.user.UserGet(ctx, in)
 	if err != nil {
-		log.Printf("user [%s] get: %v", in.GetName(), err)
+		log.Printf("user [%s] get: %v\n", in.GetName(), err)
 		return nil, err
 	}
 
@@ -92,7 +93,7 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
 	resp, err := c.user.UserList(ctx, in)
 	if err != nil {
-		log.Printf("user list: %v", err)
+		log.Printf("user list: %v\n", err)
 		return nil, err
 	}
 
@@ -100,31 +101,27 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 }
 
 func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllListServer) error {
-	offset := uint64(0)
-	for {
-		resp, err := c.user.UserList(stream.Context(), &pb.UserListRequest{
-			Order:  in.GetOrder(),
-			Limit:  in.GetLimit(),
-			Offset: offset,
-		})
-		if err != nil {
-			log.Printf("user list: %v", err)
-			return err
-		}
-
-		if len(resp.Users) == 0 {
-			break
-		}
-
-		if err = stream.Send(&pb.UserAllListResponse{
-			Users: resp.Users,
-		}); err != nil {
-			log.Printf("stream send user list: %v", err)
-			return err
-		}
-		time.Sleep(500 * time.Millisecond)
-		offset++
+	dataStream, err := c.user.UserAllList(stream.Context(), &pb.UserAllListRequest{
+		Order: in.GetOrder(),
+		Limit: in.GetLimit(),
+	})
+	if err != nil {
+		log.Printf("all users list, stream: %v\n", err)
+		return status.Error(codes.Internal, err.Error())
 	}
 
-	return nil
+	for {
+		next, err := dataStream.Recv()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			log.Printf("all users list, next chunk: %v\n", err)
+			return err
+		}
+		if err = stream.Send(next); err != nil {
+			log.Printf("all users list, send chunk: %v\n", err)
+			return status.Error(codes.Internal, err.Error())
+		}
+	}
 }

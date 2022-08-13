@@ -12,8 +12,8 @@ import (
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
-	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 )
 
 const (
@@ -42,7 +42,7 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 		FullName:  in.User.GetFullName(),
 		CreatedAt: in.User.GetCreatedAt(),
 	}); err != nil {
-		log.Printf("user [%s] create: %v", in.User.GetName(), err)
+		log.Printf("user [%s] create: %v\n", in.User.GetName(), err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserAlreadyExists):
@@ -67,7 +67,7 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 		Email:    in.Profile.GetEmail(),
 		FullName: in.Profile.GetFullName(),
 	}); err != nil {
-		log.Printf("user [%s] update: %v", in.GetName(), err)
+		log.Printf("user [%s] update: %v\n", in.GetName(), err)
 
 		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
@@ -84,7 +84,7 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 	defer cancel()
 
 	if err := c.user.Delete(ctx, in.GetName()); err != nil {
-		log.Printf("user [%s] delete: %v", in.GetName(), err)
+		log.Printf("user [%s] delete: %v\n", in.GetName(), err)
 
 		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
@@ -102,7 +102,7 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 
 	user, err := c.user.Get(ctx, in.GetName())
 	if err != nil {
-		log.Printf("user [%s] get: %v", in.GetName(), err)
+		log.Printf("user [%s] get: %v\n", in.GetName(), err)
 
 		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
@@ -112,13 +112,7 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 	}
 
 	return &pb.UserGetResponse{
-		User: &pbModels.User{
-			Name:      user.Name,
-			Password:  user.Password,
-			Email:     user.Email,
-			FullName:  user.FullName,
-			CreatedAt: user.CreatedAt,
-		},
+		User: adaptor.ToUserPbModel(user),
 	}, nil
 }
 
@@ -128,25 +122,37 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 
 	users, err := c.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
 	if err != nil {
-		log.Printf("user list: %v", err)
+		log.Printf("user list: %v\n", err)
 		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 		return &pb.UserListResponse{}, status.Error(codes.Internal, err.Error())
 	}
 
-	resp := make([]*pbModels.User, 0, len(users))
-	for _, user := range users {
-		resp = append(resp, &pbModels.User{
-			Name:      user.Name,
-			Password:  user.Password,
-			Email:     user.Email,
-			FullName:  user.FullName,
-			CreatedAt: user.CreatedAt,
-		})
-	}
-
 	return &pb.UserListResponse{
-		Users: resp,
+		Users: adaptor.ToUserListPbModel(users),
 	}, nil
+}
+
+func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllListServer) error {
+	offset := uint64(0)
+	for {
+		users, err := c.user.List(stream.Context(), in.GetOrder(), in.GetLimit(), offset)
+		if err != nil {
+			log.Printf("user list: %v\n", err)
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		if len(users) == 0 {
+			return nil
+		}
+
+		if err = stream.Send(&pb.UserAllListResponse{
+			Users: adaptor.ToUserListPbModel(users),
+		}); err != nil {
+			log.Printf("stream send user list: %v\n", err)
+			return status.Error(codes.Internal, err.Error())
+		}
+		offset++
+	}
 }

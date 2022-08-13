@@ -30,8 +30,8 @@ func main() {
 	ctx = metadata.AppendToOutgoingContext(ctx, "custom", "hello")
 
 	response, err := client.UserAllList(ctx, &pb.UserAllListRequest{
-		Order: true,
-		Limit: 5,
+		Order: false,
+		Limit: 2,
 	})
 	if err != nil {
 		log.Fatalln(err)
@@ -41,9 +41,11 @@ func main() {
 		if errors.Is(err, io.EOF) {
 			break
 		}
+		if err != nil {
+			log.Println(err)
+		}
 		for i, user := range next.Users {
 			fmt.Println(i, user.String())
 		}
 	}
-
 }

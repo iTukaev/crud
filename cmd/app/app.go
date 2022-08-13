@@ -89,7 +89,7 @@ func runBot(ctx context.Context, client pb.UserClient, apiKey string) {
 	})
 	bot.RegisterCommand(commandHelp)
 
-	log.Printf("Start TG bot")
+	log.Println("Start TG bot")
 	go func() {
 		bot.Run(ctx)
 	}()

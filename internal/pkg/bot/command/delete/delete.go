@@ -31,7 +31,7 @@ func (c *command) Process(ctx context.Context, args string) string {
 	if _, err := c.api.UserDelete(ctx, &pb.UserDeleteRequest{
 		Name: args,
 	}); err != nil {
-		log.Printf("user [%s] delete: %v", args, err)
+		log.Printf("user [%s] delete: %v\n", args, err)
 		if st, ok := status.FromError(err); ok {
 			return st.Message()
 		}
