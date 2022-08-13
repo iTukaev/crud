@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
@@ -29,6 +31,8 @@ type core struct {
 func (c *core) Create(ctx context.Context, user models.User) error {
 	if _, err := c.data.UserGet(ctx, user.Name); err == nil {
 		return errorsPkg.ErrUserAlreadyExists
+	} else if !errors.Is(err, errorsPkg.ErrUserNotFound) {
+		return err
 	}
 	if err := c.data.UserCreate(ctx, user); err != nil {
 		return err
