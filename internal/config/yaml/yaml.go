@@ -17,7 +17,7 @@ func MustNew() configPkg.Interface {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("Config init: ", err)
+		log.Fatalf("Config init: %v\n", err)
 	}
 	return &config{}
 }
@@ -41,7 +41,7 @@ func (config) RepoAddr() string {
 func (config) PGConfig() pgModels.Config {
 	var pg pgModels.Config
 	if err := viper.UnmarshalKey("pg", &pg); err != nil {
-		log.Fatalf("Postgres config unmarshal error: %v", err)
+		log.Fatalf("Postgres config unmarshal error: %v\n", err)
 	}
 	return pg
 }

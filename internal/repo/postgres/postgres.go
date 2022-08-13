@@ -32,11 +32,11 @@ func MustNew(ctx context.Context, host, port, user, password, dbname string) rep
 		host, port, user, password, dbname)
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal("can't connect to database: ", err)
+		log.Fatalf("can't connect to database: %v\n", err)
 	}
 
 	if err = pool.Ping(ctx); err != nil {
-		log.Fatal("ping database error: ", err)
+		log.Fatalf("ping database error: %v\n", err)
 	}
 
 	log.Println("With PostgreSQL started")
