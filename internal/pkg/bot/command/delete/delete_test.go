@@ -6,18 +6,16 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"
 )
 
-var (
-	ErrUnexpected = errors.New("unexpected error")
-
+const (
 	userName = "Ivan"
 )
 
@@ -42,7 +40,7 @@ func TestAddCommand_Process(t *testing.T) {
 			name:    "failed, UserDelete returns error",
 			args:    userName,
 			expText: "internal error",
-			expErr:  ErrUnexpected,
+			expErr:  errorsPkg.ErrUnexpected,
 		},
 		{
 			name:    "failed, UserDelete returns specific error",

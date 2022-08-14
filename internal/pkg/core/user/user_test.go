@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
@@ -14,8 +13,6 @@ import (
 )
 
 var (
-	ErrUnexpected = errors.New("unexpected error")
-
 	user = models.User{
 		Name:      "Ivan",
 		Password:  "123",
@@ -46,9 +43,9 @@ func Test_Create(t *testing.T) {
 		{
 			name:      "failed UserGet unexpected error",
 			user:      user,
-			getErr:    ErrUnexpected,
+			getErr:    errorsPkg.ErrUnexpected,
 			createErr: nil,
-			expErr:    ErrUnexpected,
+			expErr:    errorsPkg.ErrUnexpected,
 		},
 		{
 			name:      "failed UserGet already exists error",
@@ -61,8 +58,8 @@ func Test_Create(t *testing.T) {
 			name:      "failed UserCreate unexpected error",
 			user:      user,
 			getErr:    errorsPkg.ErrUserNotFound,
-			createErr: ErrUnexpected,
-			expErr:    ErrUnexpected,
+			createErr: errorsPkg.ErrUnexpected,
+			expErr:    errorsPkg.ErrUnexpected,
 		},
 	}
 
@@ -104,16 +101,16 @@ func Test_Update(t *testing.T) {
 		{
 			name:      "failed UserGet unexpected error",
 			user:      user,
-			getErr:    ErrUnexpected,
+			getErr:    errorsPkg.ErrUnexpected,
 			updateErr: nil,
-			expErr:    ErrUnexpected,
+			expErr:    errorsPkg.ErrUnexpected,
 		},
 		{
 			name:      "failed UserUpdate unexpected error",
 			user:      user,
 			getErr:    nil,
-			updateErr: ErrUnexpected,
-			expErr:    ErrUnexpected,
+			updateErr: errorsPkg.ErrUnexpected,
+			expErr:    errorsPkg.ErrUnexpected,
 		},
 	}
 
@@ -155,16 +152,16 @@ func Test_Delete(t *testing.T) {
 		{
 			name:      "failed UserGet unexpected error",
 			user:      user.Name,
-			getErr:    ErrUnexpected,
+			getErr:    errorsPkg.ErrUnexpected,
 			deleteErr: nil,
-			expErr:    ErrUnexpected,
+			expErr:    errorsPkg.ErrUnexpected,
 		},
 		{
 			name:      "failed UserDelete unexpected error",
 			user:      user.Name,
 			getErr:    nil,
-			deleteErr: ErrUnexpected,
-			expErr:    ErrUnexpected,
+			deleteErr: errorsPkg.ErrUnexpected,
+			expErr:    errorsPkg.ErrUnexpected,
 		},
 	}
 
@@ -206,8 +203,8 @@ func Test_Get(t *testing.T) {
 		{
 			name:    "failed UserGet unexpected error",
 			user:    user.Name,
-			getErr:  ErrUnexpected,
-			expErr:  ErrUnexpected,
+			getErr:  errorsPkg.ErrUnexpected,
+			expErr:  errorsPkg.ErrUnexpected,
 			expUser: models.User{},
 		},
 	}
@@ -246,8 +243,8 @@ func Test_List(t *testing.T) {
 		},
 		{
 			name:    "failed UserList unexpected error",
-			listErr: ErrUnexpected,
-			expErr:  ErrUnexpected,
+			listErr: errorsPkg.ErrUnexpected,
+			expErr:  errorsPkg.ErrUnexpected,
 			expList: make([]models.User, 0),
 		},
 	}

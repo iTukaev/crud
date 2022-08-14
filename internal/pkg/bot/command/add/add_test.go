@@ -6,20 +6,18 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"
 )
 
 var (
-	ErrUnexpected = errors.New("unexpected error")
-
 	user = models.User{
 		Name:     "Ivan",
 		Password: "123",
@@ -49,7 +47,7 @@ func TestAddCommand_Process(t *testing.T) {
 			name:    "failed, UserCreate returns error",
 			args:    fmt.Sprintf("%s %s %s %s", user.Name, user.Password, user.Email, user.FullName),
 			expText: "internal error",
-			expErr:  ErrUnexpected,
+			expErr:  errorsPkg.ErrUnexpected,
 		},
 		{
 			name:    "failed, UserCreate returns specific error",

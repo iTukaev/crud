@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -17,10 +16,6 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"
-)
-
-var (
-	ErrUnexpected = errors.New("unexpected error")
 )
 
 func TestDataApi_UserCreate(t *testing.T) {
@@ -54,8 +49,8 @@ func TestDataApi_UserCreate(t *testing.T) {
 		},
 		{
 			name:   "failed, unexpected error",
-			err:    ErrUnexpected,
-			expErr: status.Error(codes.Internal, ErrUnexpected.Error()),
+			err:    errorsPkg.ErrUnexpected,
+			expErr: status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			expRes: nil,
 		},
 	}
@@ -108,8 +103,8 @@ func TestDataApi_UserUpdate(t *testing.T) {
 		},
 		{
 			name:   "failed, unexpected error",
-			err:    ErrUnexpected,
-			expErr: status.Error(codes.Internal, ErrUnexpected.Error()),
+			err:    errorsPkg.ErrUnexpected,
+			expErr: status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			expRes: nil,
 		},
 	}
@@ -162,8 +157,8 @@ func TestDataApi_UserDelete(t *testing.T) {
 		},
 		{
 			name:   "failed, unexpected error",
-			err:    ErrUnexpected,
-			expErr: status.Error(codes.Internal, ErrUnexpected.Error()),
+			err:    errorsPkg.ErrUnexpected,
+			expErr: status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			expRes: nil,
 		},
 	}
@@ -216,8 +211,8 @@ func TestDataApi_UserGet(t *testing.T) {
 		},
 		{
 			name:   "failed, unexpected error",
-			err:    ErrUnexpected,
-			expErr: status.Error(codes.Internal, ErrUnexpected.Error()),
+			err:    errorsPkg.ErrUnexpected,
+			expErr: status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			expRes: nil,
 		},
 	}
@@ -264,8 +259,8 @@ func TestDataApi_UserList(t *testing.T) {
 		},
 		{
 			name:   "failed, unexpected error",
-			err:    ErrUnexpected,
-			expErr: status.Error(codes.Internal, ErrUnexpected.Error()),
+			err:    errorsPkg.ErrUnexpected,
+			expErr: status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			expRes: &pb.UserListResponse{},
 		},
 	}
@@ -311,9 +306,9 @@ func TestDataApi_UserAllList(t *testing.T) {
 		},
 		{
 			name:    "failed, List unexpected error",
-			listErr: ErrUnexpected,
+			listErr: errorsPkg.ErrUnexpected,
 			sendErr: nil,
-			expErr:  status.Error(codes.Internal, ErrUnexpected.Error()),
+			expErr:  status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			first:   []models.User{{}, {}},
 			second:  []models.User{},
 			toSend:  &pb.UserAllListResponse{Users: adaptor.ToUserListPbModel([]models.User{{}, {}})},
@@ -321,8 +316,8 @@ func TestDataApi_UserAllList(t *testing.T) {
 		{
 			name:    "failed, Send unexpected error",
 			listErr: nil,
-			sendErr: ErrUnexpected,
-			expErr:  status.Error(codes.Internal, ErrUnexpected.Error()),
+			sendErr: errorsPkg.ErrUnexpected,
+			expErr:  status.Error(codes.Internal, errorsPkg.ErrUnexpected.Error()),
 			first:   []models.User{{}, {}},
 			second:  []models.User{},
 			toSend:  &pb.UserAllListResponse{Users: adaptor.ToUserListPbModel([]models.User{{}, {}})},
