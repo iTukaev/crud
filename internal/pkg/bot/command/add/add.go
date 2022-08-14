@@ -13,6 +13,11 @@ import (
 	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 )
 
+const (
+	addName        = "add"
+	addDescription = "create user [/add <name> <password> <email> <full_name>]"
+)
+
 func New(api pb.UserClient) commandPkg.Interface {
 	return &command{
 		api: api,
@@ -47,9 +52,9 @@ func (c *command) Process(ctx context.Context, args string) string {
 }
 
 func (*command) Name() string {
-	return "add"
+	return addName
 }
 
 func (*command) Description() string {
-	return "create user [/add <name> <password> <email> <full_name>]"
+	return addDescription
 }

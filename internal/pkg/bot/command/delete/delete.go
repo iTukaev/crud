@@ -12,6 +12,11 @@ import (
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
 
+const (
+	deleteName        = "del"
+	deleteDescription = "delete user [/del <name>]"
+)
+
 func New(api pb.UserClient) commandPkg.Interface {
 	return &command{
 		api: api,
@@ -41,9 +46,9 @@ func (c *command) Process(ctx context.Context, args string) string {
 }
 
 func (*command) Name() string {
-	return "del"
+	return deleteName
 }
 
 func (*command) Description() string {
-	return "delete user [/del <name>]"
+	return deleteDescription
 }
