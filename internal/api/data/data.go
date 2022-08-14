@@ -69,7 +69,10 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 	}); err != nil {
 		log.Printf("user [%s] update: %v\n", in.GetName(), err)
 
-		if errors.Is(err, errorsPkg.ErrTimeout) {
+		switch {
+		case errors.Is(err, errorsPkg.ErrUserNotFound):
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
@@ -86,7 +89,10 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 	if err := c.user.Delete(ctx, in.GetName()); err != nil {
 		log.Printf("user [%s] delete: %v\n", in.GetName(), err)
 
-		if errors.Is(err, errorsPkg.ErrTimeout) {
+		switch {
+		case errors.Is(err, errorsPkg.ErrUserNotFound):
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
@@ -104,7 +110,10 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 	if err != nil {
 		log.Printf("user [%s] get: %v\n", in.GetName(), err)
 
-		if errors.Is(err, errorsPkg.ErrTimeout) {
+		switch {
+		case errors.Is(err, errorsPkg.ErrUserNotFound):
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, errorsPkg.ErrTimeout):
 			return nil, status.Error(codes.DeadlineExceeded, err.Error())
 		}
 
