@@ -6,6 +6,7 @@ type Interface interface {
 	BotKey() string
 	GRPCAddr() string
 	HTTPAddr() string
+	RepoAddr() string
 	Local() bool
 	WorkersCount() int
 	PGConfig() pgModels.Config

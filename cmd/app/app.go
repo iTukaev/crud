@@ -5,12 +5,16 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	apiPkg "gitlab.ozon.dev/iTukaev/homework/internal/api"
+	apiValidatorPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/validator"
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	botPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot"
@@ -20,10 +24,6 @@ import (
 	cmdHelpPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/help"
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
-	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
-	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
-	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
-	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
 
@@ -34,43 +34,51 @@ func main() {
 	defer cancel()
 
 	config := yamlPkg.MustNew()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 
-	start(ctx, config)
+	go start(ctx, config)
+
+	select {
+	case <-c:
+		log.Println("Shutting down...")
+		cancel()
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}
 }
 
 func start(ctx context.Context, config configPkg.Interface) {
-	var data repoPkg.Interface
-	if config.Local() {
-		data = localCachePkg.New(config.WorkersCount())
-	} else {
-		pg := config.PGConfig()
-		data = postgresPkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName)
+	conn, err := grpc.Dial(config.RepoAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalln(err)
 	}
-	user := userPkg.MustNew(data)
 
-	go runGRPCServer(user, config.GRPCAddr())
-	go runHTTPServer(user, config.HTTPAddr())
+	client := pb.NewUserClient(conn)
 
-	runBot(ctx, user, config.BotKey())
+	go runGRPCServer(ctx, client, config.GRPCAddr())
+	go runHTTPServer(ctx, client, config.HTTPAddr())
+
+	runBot(ctx, client, config.BotKey())
 }
 
-func runBot(ctx context.Context, user userPkg.Interface, apiKey string) {
+func runBot(ctx context.Context, client pb.UserClient, apiKey string) {
 	bot := botPkg.MustNew(apiKey)
 
-	commandAdd := cmdAddPkg.New(user)
-	bot.RegisterCommander(commandAdd)
+	commandAdd := cmdAddPkg.New(client)
+	bot.RegisterCommand(commandAdd)
 
-	commandUpdate := cmdUpdatePkg.New(user)
-	bot.RegisterCommander(commandUpdate)
+	commandUpdate := cmdUpdatePkg.New(client)
+	bot.RegisterCommand(commandUpdate)
 
-	commandDelete := cmdDeletePkg.New(user)
-	bot.RegisterCommander(commandDelete)
+	commandDelete := cmdDeletePkg.New(client)
+	bot.RegisterCommand(commandDelete)
 
-	commandGet := cmdGetPkg.New(user)
-	bot.RegisterCommander(commandGet)
+	commandGet := cmdGetPkg.New(client)
+	bot.RegisterCommand(commandGet)
 
-	commandList := cmdListPkg.New(user)
-	bot.RegisterCommander(commandList)
+	commandList := cmdListPkg.New(client)
+	bot.RegisterCommand(commandList)
 
 	commandHelp := cmdHelpPkg.New(map[string]string{
 		commandAdd.Name():    commandAdd.Description(),
@@ -79,31 +87,44 @@ func runBot(ctx context.Context, user userPkg.Interface, apiKey string) {
 		commandGet.Name():    commandGet.Description(),
 		commandList.Name():   commandList.Description(),
 	})
-	bot.RegisterCommander(commandHelp)
+	bot.RegisterCommand(commandHelp)
 
-	log.Printf("Start TG bot")
-	bot.Run(ctx)
+	log.Println("Start TG bot")
+	go func() {
+		bot.Run(ctx)
+	}()
+
+	select {
+	case <-ctx.Done():
+		bot.Stop()
+		log.Println("Bot stopped")
+	}
 }
 
-func runGRPCServer(user userPkg.Interface, grpcSrv string) {
+func runGRPCServer(ctx context.Context, client pb.UserClient, grpcSrv string) {
 	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterUserServer(grpcServer, apiPkg.New(user))
+	pb.RegisterUserServer(grpcServer, apiValidatorPkg.New(client))
 
 	log.Println("Start gRPC")
-	if err = grpcServer.Serve(listener); err != nil {
-		log.Fatalln(err)
+	go func() {
+		if err = grpcServer.Serve(listener); err != nil {
+			log.Fatalln(err)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		grpcServer.Stop()
+		log.Println("gRPC stopped")
 	}
 }
 
-func runHTTPServer(user userPkg.Interface, httpSrv string) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string) {
 	gwMux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
@@ -120,12 +141,26 @@ func runHTTPServer(user userPkg.Interface, httpSrv string) {
 	fs := http.FileServer(http.Dir("./swagger"))
 	mux.Handle("/swagger/", http.StripPrefix("/swagger/", fs))
 
-	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiPkg.New(user)); err != nil {
+	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiValidatorPkg.New(client)); err != nil {
 		log.Fatalln("HTTP gateway register:", err)
 	}
 
+	srv := http.Server{
+		Addr:    httpSrv,
+		Handler: mux,
+	}
 	log.Println("Start HTTP gateway")
-	if err := http.ListenAndServe(httpSrv, mux); err != nil {
-		log.Fatalln(err)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatalln(err)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		if err := srv.Close(); err != nil {
+			log.Println("HTTP server close error:", err)
+		}
+		log.Println("HTTP gateway stopped")
 	}
 }

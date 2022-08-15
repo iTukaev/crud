@@ -3,32 +3,37 @@ package get
 import (
 	"context"
 	"log"
+	"strings"
 
-	"github.com/pkg/errors"
+	"google.golang.org/grpc/status"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
-	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
 
-func New(user userPkg.Interface) commandPkg.Interface {
+func New(api pb.UserClient) commandPkg.Interface {
 	return &command{
-		user: user,
+		api: api,
 	}
 }
 
 type command struct {
-	user userPkg.Interface
+	api pb.UserClient
 }
 
 func (c *command) Process(ctx context.Context, args string) string {
-	user, err := c.user.Get(ctx, args)
+	args = strings.TrimSpace(args)
+	if args == "" {
+		return "invalid arguments"
+	}
+
+	user, err := c.api.UserGet(ctx, &pb.UserGetRequest{
+		Name: args,
+	})
 	if err != nil {
-		log.Printf("user [%s] get: %v", args, err)
-		if errors.Is(err, userPkg.ErrValidation) {
-			return "invalid arguments"
-		} else if errors.Is(err, errorsPkg.ErrUserNotFound) {
-			return err.Error()
+		log.Printf("user [%s] get: %v\n", args, err)
+		if st, ok := status.FromError(err); ok {
+			return st.Message()
 		}
 		return "internal error"
 	}

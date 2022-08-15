@@ -17,8 +17,9 @@ const (
 )
 
 type Interface interface {
-	RegisterCommander(cmd commandPkg.Interface)
+	RegisterCommand(cmd commandPkg.Interface)
 	Run(ctx context.Context)
+	Stop()
 }
 
 func MustNew(id string) Interface {
@@ -40,8 +41,8 @@ type commander struct {
 	route map[string]commandPkg.Interface
 }
 
-// RegisterCommander - not thread safe
-func (c *commander) RegisterCommander(cmd commandPkg.Interface) {
+// RegisterCommand - not thread safe
+func (c *commander) RegisterCommand(cmd commandPkg.Interface) {
 	c.route[cmd.Name()] = cmd
 }
 
@@ -56,6 +57,10 @@ func (c *commander) Run(ctx context.Context) {
 			go c.handleMessage(ctx, update.Message)
 		}
 	}
+}
+
+func (c *commander) Stop() {
+	c.bot.StopReceivingUpdates()
 }
 
 func (c *commander) handleMessage(ctx context.Context, message *tgbotapi.Message) {

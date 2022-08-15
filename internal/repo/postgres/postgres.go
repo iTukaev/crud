@@ -3,16 +3,16 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"log"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 )
 
 const (
@@ -32,11 +32,11 @@ func MustNew(ctx context.Context, host, port, user, password, dbname string) rep
 		host, port, user, password, dbname)
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal("can't connect to database: ", err)
+		log.Fatalf("can't connect to database: %v\n", err)
 	}
 
 	if err = pool.Ping(ctx); err != nil {
-		log.Fatal("ping database error: ", err)
+		log.Fatalf("ping database error: %v\n", err)
 	}
 
 	log.Println("With PostgreSQL started")
@@ -143,13 +143,14 @@ func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) (
 	query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField, createdAtField).
 		From(usersTable).
 		Limit(limit).
-		Offset(offset).
+		Offset(offset * limit).
 		OrderBy(nameField + sort).
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "postgres UserList: to sql")
 	}
+
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "postgres UserList: query")

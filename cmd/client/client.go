@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -15,7 +18,6 @@ import (
 func main() {
 	log.Println("start client")
 	config := yamlPkg.MustNew()
-	config.Init()
 
 	conn, err := grpc.Dial(config.GRPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -27,13 +29,23 @@ func main() {
 	ctx := context.Background()
 	ctx = metadata.AppendToOutgoingContext(ctx, "custom", "hello")
 
-	response, err := client.UserCreate(ctx, &pb.UserCreateRequest{
-		Name:     "Paulo",
-		Password: "123",
+	response, err := client.UserAllList(ctx, &pb.UserAllListRequest{
+		Order: false,
+		Limit: 2,
 	})
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	log.Printf("response: [%v]", response)
+	for {
+		next, err := response.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			log.Println(err)
+		}
+		for i, user := range next.Users {
+			fmt.Println(i, user.String())
+		}
+	}
 }
