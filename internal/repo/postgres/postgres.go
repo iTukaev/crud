@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgtype/pgxtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
@@ -27,6 +28,11 @@ const (
 	desc = " DESC"
 )
 
+type PgxPool interface {
+	pgxtype.Querier
+	Close()
+}
+
 func MustNew(ctx context.Context, host, port, user, password, dbname string) repoPkg.Interface {
 	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
@@ -46,7 +52,7 @@ func MustNew(ctx context.Context, host, port, user, password, dbname string) rep
 }
 
 type repo struct {
-	pool *pgxpool.Pool
+	pool PgxPool
 }
 
 func (r *repo) UserCreate(ctx context.Context, user models.User) error {
@@ -67,22 +73,15 @@ func (r *repo) UserCreate(ctx context.Context, user models.User) error {
 }
 
 func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
-	builder := squirrel.Update(usersTable).
+	query, args, err := squirrel.Update(usersTable).
+		Set(passwordField, user.Password).
+		Set(emailField, user.Email).
+		Set(fullNameField, user.FullName).
 		Where(squirrel.Eq{
 			nameField: user.Name,
-		})
-
-	if user.Email != "" {
-		builder = builder.Set(emailField, user.Email)
-	}
-	if user.Password != "" {
-		builder = builder.Set(passwordField, user.Password)
-	}
-	if user.FullName != "" {
-		builder = builder.Set(fullNameField, user.FullName)
-	}
-
-	query, args, err := builder.PlaceholderFormat(squirrel.Dollar).ToSql()
+		}).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
 	if err != nil {
 		return errors.Wrap(err, "postgres UserUpdate: to sql")
 	}
