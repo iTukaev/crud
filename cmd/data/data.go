@@ -47,7 +47,11 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface) {
 		data = localCachePkg.New(config.WorkersCount())
 	} else {
 		pg := config.PGConfig()
-		data = postgresPkg.MustNew(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName)
+		pool, err := postgresPkg.NewPostgres(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName)
+		if err != nil {
+			log.Fatalln("Connect to database:", err)
+		}
+		data = postgresPkg.MustNew(pool)
 	}
 	user := userPkg.MustNew(data)
 

@@ -33,22 +33,25 @@ type PgxPool interface {
 	Close()
 }
 
-func MustNew(ctx context.Context, host, port, user, password, dbname string) repoPkg.Interface {
-	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-	pool, err := pgxpool.Connect(ctx, psqlConn)
-	if err != nil {
-		log.Fatalf("can't connect to database: %v\n", err)
-	}
-
-	if err = pool.Ping(ctx); err != nil {
-		log.Fatalf("ping database error: %v\n", err)
-	}
-
+func MustNew(pool *pgxpool.Pool) repoPkg.Interface {
 	log.Println("With PostgreSQL started")
 	return &repo{
 		pool: pool,
 	}
+}
+
+func NewPostgres(ctx context.Context, host, port, user, password, dbname string) (*pgxpool.Pool, error) {
+	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	pool, err := pgxpool.Connect(ctx, psqlConn)
+	if err != nil {
+		return nil, fmt.Errorf("can't connect to database: %v\n", err)
+	}
+
+	if err = pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("ping database error: %v\n", err)
+	}
+	return pool, nil
 }
 
 type repo struct {
