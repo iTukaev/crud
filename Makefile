@@ -35,8 +35,8 @@ test:
 	@go test -short ${PKG_LIST}
 
 cover:
-	@go test -short ${PKG_LIST} -coverprofile=/tmp/cover.out -covermode=count -coverpkg=${PKG_LIST}
+	@go test -short ${PKG_LIST} -coverprofile=/tmp/cover.out -covermode=count -coverpkg=./...
 	@go tool cover -html=/tmp/cover.out
 
 integration:
-	@go test -short ./tests/integration/ --tags=integration
+	@go test -short ${PKG_LIST} ./tests/integration/ --tags=integration
