@@ -1,3 +1,5 @@
+//go:generate chaingen models.go
+
 package models
 
 import (

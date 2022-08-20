@@ -117,7 +117,7 @@ func (c *cache) UserList(ctx context.Context, order bool, limit, offset uint64) 
 			<-c.poolCh
 		}()
 
-		if len(c.data) < int(limit*(offset-1)) {
+		if len(c.data) < int(limit*offset) {
 			return make([]models.User, 0), nil
 		}
 
@@ -133,11 +133,11 @@ func (c *cache) UserList(ctx context.Context, order bool, limit, offset uint64) 
 			return list[i].Name < list[j].Name
 		})
 
-		min := limit * (offset - 1)
-		if len(list) < int(limit*offset) {
+		min := limit * offset
+		if len(list) < int(limit*(offset+1)) {
 			return list[min:], nil
 		} else {
-			max := limit * offset
+			max := limit * (offset + 1)
 			return list[min:max], nil
 		}
 	}
@@ -147,4 +147,5 @@ func (c *cache) Close() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.data = nil
+	close(c.poolCh)
 }
