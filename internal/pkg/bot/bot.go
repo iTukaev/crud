@@ -3,13 +3,13 @@ package bot
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -22,23 +22,25 @@ type Interface interface {
 	Stop()
 }
 
-func MustNew(id string) Interface {
+func New(id string, logger loggerPkg.Interface) (Interface, error) {
 	bot, err := tgbotapi.NewBotAPI(id)
 	if err != nil {
-		log.Panic(errors.Wrap(err, "new API bot"))
+		return nil, errors.Wrap(err, "new API bot")
 	}
 
 	bot.Debug = false
 
 	return &commander{
-		bot:   bot,
-		route: make(map[string]commandPkg.Interface),
-	}
+		bot:    bot,
+		route:  make(map[string]commandPkg.Interface),
+		logger: logger,
+	}, nil
 }
 
 type commander struct {
-	bot   *tgbotapi.BotAPI
-	route map[string]commandPkg.Interface
+	bot    *tgbotapi.BotAPI
+	route  map[string]commandPkg.Interface
+	logger loggerPkg.Interface
 }
 
 // RegisterCommand - not thread safe
@@ -79,6 +81,6 @@ func (c *commander) handleMessage(ctx context.Context, message *tgbotapi.Message
 	}
 	_, err := c.bot.Send(msg)
 	if err != nil {
-		log.Printf("answer error: %v\n", err)
+		c.logger.Error("answer error:", err)
 	}
 }

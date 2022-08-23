@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -25,45 +25,83 @@ import (
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/zaplog"
 )
 
 func main() {
-	log.Println("Start main")
+	config, err := yamlPkg.New()
+	if err != nil {
+		log.Fatalln("Config init error:", err)
+	}
+	logger, err := zaplog.New(config.LogLevel())
+	if err != nil {
+		log.Fatalln("Config init error:", err)
+	}
+	logger.Info("Start main")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func() {
+		logger.Info("Shutting down...")
+		cancel()
+	}()
 
-	config := yamlPkg.MustNew()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	go start(ctx, config)
+	go func() {
+		if err = start(ctx, config, logger); err != nil {
+			logger.Error(err)
+			c <- os.Interrupt
+		}
+	}()
 
 	select {
 	case <-c:
-		log.Println("Shutting down...")
-		cancel()
-		time.Sleep(1 * time.Second)
-		os.Exit(0)
 	}
 }
 
-func start(ctx context.Context, config configPkg.Interface) {
+func start(ctx context.Context, config configPkg.Interface, logger loggerPkg.Interface) (retErr error) {
 	conn, err := grpc.Dial(config.RepoAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalln(err)
+		return errors.Wrap(err, "gRPC client connection")
 	}
 
 	client := pb.NewUserClient(conn)
 
-	go runGRPCServer(ctx, client, config.GRPCAddr())
-	go runHTTPServer(ctx, client, config.HTTPAddr())
+	stopCh := make(chan struct{}, 0)
 
-	runBot(ctx, client, config.BotKey())
+	go func() {
+		if err = runGRPCServer(ctx, client, config.GRPCAddr(), logger); err != nil {
+			retErr = errors.Wrap(err, "gRPC server")
+		}
+		close(stopCh)
+	}()
+	go func() {
+		if err = runHTTPServer(ctx, client, config.HTTPAddr(), logger); err != nil {
+			retErr = errors.Wrap(err, "HTTP server")
+		}
+		close(stopCh)
+	}()
+	go func() {
+		if err = runBot(ctx, client, config.BotKey(), logger); err != nil {
+			retErr = errors.Wrap(err, "tg bot")
+		}
+		close(stopCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-stopCh:
+	}
+	return retErr
 }
 
-func runBot(ctx context.Context, client pb.UserClient, apiKey string) {
-	bot := botPkg.MustNew(apiKey)
+func runBot(ctx context.Context, client pb.UserClient, apiKey string, logger loggerPkg.Interface) error {
+	bot, err := botPkg.New(apiKey, logger)
+	if err != nil {
+		return err
+	}
 
 	commandAdd := cmdAddPkg.New(client)
 	bot.RegisterCommand(commandAdd)
@@ -89,42 +127,50 @@ func runBot(ctx context.Context, client pb.UserClient, apiKey string) {
 	})
 	bot.RegisterCommand(commandHelp)
 
-	log.Println("Start TG bot")
+	logger.Info("Start TG bot")
+	stopCh := make(chan struct{}, 0)
 	go func() {
 		bot.Run(ctx)
+		close(stopCh)
 	}()
 
 	select {
+	case <-stopCh:
 	case <-ctx.Done():
 		bot.Stop()
-		log.Println("Bot stopped")
 	}
+	logger.Info("Bot stopped")
+	return nil
 }
 
-func runGRPCServer(ctx context.Context, client pb.UserClient, grpcSrv string) {
+func runGRPCServer(ctx context.Context, client pb.UserClient, grpcSrv string, logger loggerPkg.Interface) (retErr error) {
 	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
-		log.Fatalln(err)
+		return errors.Wrap(err, "listener")
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterUserServer(grpcServer, apiValidatorPkg.New(client))
+	pb.RegisterUserServer(grpcServer, apiValidatorPkg.New(client, logger))
 
-	log.Println("Start gRPC")
+	logger.Info("Start gRPC")
+	stopCh := make(chan struct{}, 0)
 	go func() {
 		if err = grpcServer.Serve(listener); err != nil {
-			log.Fatalln(err)
+			retErr = errors.Wrap(err, "serve")
 		}
+		close(stopCh)
 	}()
 
 	select {
+	case <-stopCh:
 	case <-ctx.Done():
 		grpcServer.Stop()
-		log.Println("gRPC stopped")
 	}
+	logger.Info("gRPC stopped")
+	return
 }
 
-func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string) {
+func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string, logger loggerPkg.Interface) (retErr error) {
 	gwMux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
@@ -141,26 +187,33 @@ func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string) {
 	fs := http.FileServer(http.Dir("./swagger"))
 	mux.Handle("/swagger/", http.StripPrefix("/swagger/", fs))
 
-	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiValidatorPkg.New(client)); err != nil {
-		log.Fatalln("HTTP gateway register:", err)
+	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiValidatorPkg.New(client, logger)); err != nil {
+		return errors.Wrap(err, "HTTP gateway register")
 	}
 
 	srv := http.Server{
 		Addr:    httpSrv,
 		Handler: mux,
 	}
-	log.Println("Start HTTP gateway")
+	logger.Info("Start HTTP gateway")
+	stopCh := make(chan struct{}, 0)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Fatalln(err)
+			retErr = errors.Wrap(err, "ListenAndServe")
 		}
+		close(stopCh)
 	}()
 
+	defer func() {
+
+	}()
 	select {
+	case <-stopCh:
 	case <-ctx.Done():
 		if err := srv.Close(); err != nil {
-			log.Println("HTTP server close error:", err)
+			logger.Error("HTTP server close error:", err)
 		}
-		log.Println("HTTP gateway stopped")
 	}
+	logger.Info("HTTP gateway stopped")
+	return nil
 }

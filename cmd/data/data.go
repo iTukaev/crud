@@ -26,7 +26,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := yamlPkg.MustNew()
+	config := yamlPkg.New()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 

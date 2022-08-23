@@ -7,6 +7,7 @@ type Interface interface {
 	GRPCAddr() string
 	HTTPAddr() string
 	RepoAddr() string
+	LogLevel() string
 	Local() bool
 	WorkersCount() int
 	PGConfig() pgModels.Config

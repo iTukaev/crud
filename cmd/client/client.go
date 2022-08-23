@@ -17,7 +17,7 @@ import (
 
 func main() {
 	log.Println("start client")
-	config := yamlPkg.MustNew()
+	config, _ := yamlPkg.New()
 
 	conn, err := grpc.Dial(config.GRPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

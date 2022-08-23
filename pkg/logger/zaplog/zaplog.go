@@ -1,4 +1,4 @@
-package zap
+package zaplog
 
 import (
 	"github.com/pkg/errors"
@@ -42,21 +42,17 @@ type core struct {
 }
 
 func (c *core) Fatal(args ...interface{}) {
-	//TODO implement me
-	panic("implement me")
+	c.log.Fatalln(args)
 }
 
 func (c *core) Error(args ...interface{}) {
-	//TODO implement me
-	panic("implement me")
+	c.log.Errorln(args)
 }
 
 func (c *core) Info(args ...interface{}) {
-	//TODO implement me
-	panic("implement me")
+	c.log.Infoln(args)
 }
 
 func (c *core) Debug(args ...interface{}) {
-	//TODO implement me
-	panic("implement me")
+	c.log.Debugln(args)
 }

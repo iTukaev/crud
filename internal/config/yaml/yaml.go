@@ -3,6 +3,7 @@ package yaml
 import (
 	"log"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
@@ -11,15 +12,15 @@ import (
 
 type config struct{}
 
-func MustNew() configPkg.Interface {
+func New() (configPkg.Interface, error) {
 	log.Println("Init config")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Config init: %v\n", err)
+		return nil, errors.Wrap(err, "config init")
 	}
-	return &config{}
+	return &config{}, nil
 }
 
 func (config) BotKey() string {
@@ -36,6 +37,10 @@ func (config) HTTPAddr() string {
 
 func (config) RepoAddr() string {
 	return viper.GetString("repo")
+}
+
+func (config) LogLevel() string {
+	return viper.GetString("log")
 }
 
 func (config) PGConfig() pgModels.Config {
