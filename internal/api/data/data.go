@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -14,24 +13,35 @@ import (
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
 	contextTimeout = 5 * time.Second
+
+	undefinedMeta = "undefined"
 )
 
-func New(user userPkg.Interface) pb.UserServer {
+func New(user userPkg.Interface, logger loggerPkg.Interface) pb.UserServer {
 	return &core{
-		user: user,
+		user:   user,
+		logger: logger,
 	}
 }
 
 type core struct {
-	user userPkg.Interface
+	user   userPkg.Interface
+	logger loggerPkg.Interface
 	pb.UnimplementedUserServer
 }
 
 func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
+	meta, ok := ctx.Value("meta").(string)
+	if !ok {
+		meta = undefinedMeta
+	}
+	c.logger.Debug(meta, "user create:", in.User.String())
+
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -42,7 +52,7 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 		FullName:  in.User.GetFullName(),
 		CreatedAt: in.User.GetCreatedAt(),
 	}); err != nil {
-		log.Printf("user [%s] create: %v\n", in.User.GetName(), err)
+		c.logger.Error(meta, "user create:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserAlreadyExists):
@@ -58,6 +68,12 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 }
 
 func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
+	meta, ok := ctx.Value("meta").(string)
+	if !ok {
+		meta = undefinedMeta
+	}
+	c.logger.Debug(meta, "user update:", in.GetName(), in.Profile.String())
+
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -67,7 +83,7 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 		Email:    in.Profile.GetEmail(),
 		FullName: in.Profile.GetFullName(),
 	}); err != nil {
-		log.Printf("user [%s] update: %v\n", in.GetName(), err)
+		c.logger.Error(meta, "user update:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserNotFound):
@@ -83,11 +99,17 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 }
 
 func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
+	meta, ok := ctx.Value("meta").(string)
+	if !ok {
+		meta = undefinedMeta
+	}
+	c.logger.Debug(meta, "user delete:", in.GetName())
+
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	if err := c.user.Delete(ctx, in.GetName()); err != nil {
-		log.Printf("user [%s] delete: %v\n", in.GetName(), err)
+		c.logger.Error(meta, "user delete:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserNotFound):
@@ -103,12 +125,18 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 }
 
 func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
+	meta, ok := ctx.Value("meta").(string)
+	if !ok {
+		meta = undefinedMeta
+	}
+	c.logger.Debug(meta, "user get:", in.GetName())
+
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	user, err := c.user.Get(ctx, in.GetName())
 	if err != nil {
-		log.Printf("user [%s] get: %v\n", in.GetName(), err)
+		c.logger.Error(meta, "user get:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserNotFound):
@@ -126,12 +154,18 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 }
 
 func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
+	meta, ok := ctx.Value("meta").(string)
+	if !ok {
+		meta = undefinedMeta
+	}
+	c.logger.Debug(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
+
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	users, err := c.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
 	if err != nil {
-		log.Printf("user list: %v\n", err)
+		c.logger.Error(meta, "user list:", err)
 		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
 		}
@@ -144,11 +178,17 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 }
 
 func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllListServer) error {
+	meta, ok := stream.Context().Value("meta").(string)
+	if !ok {
+		meta = undefinedMeta
+	}
+	c.logger.Debug(meta, "all users list", in.GetOrder(), in.GetLimit())
+
 	offset := uint64(0)
 	for {
 		users, err := c.user.List(stream.Context(), in.GetOrder(), in.GetLimit(), offset)
 		if err != nil {
-			log.Printf("user list: %v\n", err)
+			c.logger.Error(meta, "Get list", err)
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -159,7 +199,7 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 		if err = stream.Send(&pb.UserAllListResponse{
 			Users: adaptor.ToUserListPbModel(users),
 		}); err != nil {
-			log.Printf("stream send user list: %v\n", err)
+			c.logger.Error(meta, "all users list, send chunk", err)
 			return status.Error(codes.Internal, err.Error())
 		}
 		offset++

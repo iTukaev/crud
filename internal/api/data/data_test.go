@@ -15,6 +15,7 @@ import (
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/emptylog"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"
 )
 
@@ -58,7 +59,7 @@ func TestDataApi_UserCreate(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockUser := userMockPkg.NewMockInterface(ctl)
-			userCtl := New(mockUser)
+			userCtl := New(mockUser, emptylog.New())
 
 			gomock.InOrder(
 				mockUser.EXPECT().Create(gomock.Any(), models.User{}).
@@ -112,7 +113,7 @@ func TestDataApi_UserUpdate(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockUser := userMockPkg.NewMockInterface(ctl)
-			userCtl := New(mockUser)
+			userCtl := New(mockUser, emptylog.New())
 
 			gomock.InOrder(
 				mockUser.EXPECT().Update(gomock.Any(), models.User{}).
@@ -166,7 +167,7 @@ func TestDataApi_UserDelete(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockUser := userMockPkg.NewMockInterface(ctl)
-			userCtl := New(mockUser)
+			userCtl := New(mockUser, emptylog.New())
 
 			gomock.InOrder(
 				mockUser.EXPECT().Delete(gomock.Any(), models.User{}.Name).
@@ -220,7 +221,7 @@ func TestDataApi_UserGet(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockUser := userMockPkg.NewMockInterface(ctl)
-			userCtl := New(mockUser)
+			userCtl := New(mockUser, emptylog.New())
 
 			gomock.InOrder(
 				mockUser.EXPECT().Get(gomock.Any(), models.User{}.Name).
@@ -268,7 +269,7 @@ func TestDataApi_UserList(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockUser := userMockPkg.NewMockInterface(ctl)
-			userCtl := New(mockUser)
+			userCtl := New(mockUser, emptylog.New())
 
 			gomock.InOrder(
 				mockUser.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
@@ -285,6 +286,7 @@ func TestDataApi_UserList(t *testing.T) {
 func TestDataApi_UserAllList(t *testing.T) {
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
+	ctx := context.WithValue(context.Background(), "meta", "meta")
 
 	cases := []struct {
 		name    string
@@ -328,9 +330,10 @@ func TestDataApi_UserAllList(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			mockUser := userMockPkg.NewMockInterface(ctl)
 			mockStream := apiMockPkg.NewMockUser_UserAllListServer(ctl)
-			userCtl := New(mockUser)
+			userCtl := New(mockUser, emptylog.New())
 
 			gomock.InOrder(
+				mockStream.EXPECT().Context().Return(ctx).Times(1),
 				mockStream.EXPECT().Context().Times(1),
 				mockUser.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(c.first, c.listErr).Times(1),

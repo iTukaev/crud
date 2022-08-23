@@ -6,8 +6,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"time"
+	"runtime"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	apiDataPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/data"
@@ -18,42 +19,58 @@ import (
 	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
 	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/zaplog"
 )
 
 func main() {
-	log.Println("Start main")
+	config, err := yamlPkg.New()
+	if err != nil {
+		log.Fatalln("Config init error:", err)
+	}
+	logger, err := zaplog.New(config.LogLevel())
+	if err != nil {
+		log.Fatalln("Config init error:", err)
+	}
+	logger.Info("Start main")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func() {
+		logger.Info("Shutting down...")
+		cancel()
+	}()
 
-	config := yamlPkg.New()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	go runGRPCServer(ctx, config)
+	go func() {
+		if err = runGRPCServer(ctx, config, logger); err != nil {
+			logger.Error("gRPC", err)
+		}
+		c <- os.Interrupt
+	}()
 
-	select {
-	case <-c:
-		log.Println("Shutting down...")
-		cancel()
-		time.Sleep(1 * time.Second)
-		os.Exit(0)
-	}
+	<-c
 }
 
-func runGRPCServer(ctx context.Context, config configPkg.Interface) {
+func runGRPCServer(ctx context.Context, config configPkg.Interface, logger loggerPkg.Interface) (retErr error) {
 	var data repoPkg.Interface
 	if config.Local() {
-		data = localCachePkg.New(config.WorkersCount())
+		workers := config.WorkersCount()
+		if workers == 0 {
+			workers = runtime.NumCPU()
+		}
+		data = localCachePkg.New(workers, logger)
 	} else {
 		pg := config.PGConfig()
-		pool, err := postgresPkg.NewPostgres(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName)
+		pool, err := postgresPkg.NewPostgres(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName, logger)
 		if err != nil {
-			log.Fatalln("Connect to database:", err)
+			logger.Error("New Postgres", err)
+			return err
 		}
-		data = postgresPkg.MustNew(pool)
+		data = postgresPkg.New(pool, logger)
 	}
-	user := userPkg.MustNew(data)
+	user := userPkg.New(data, logger)
 
 	listener, err := net.Listen("tcp", config.RepoAddr())
 	if err != nil {
@@ -61,19 +78,23 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface) {
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterUserServer(grpcServer, apiDataPkg.New(user))
+	pb.RegisterUserServer(grpcServer, apiDataPkg.New(user, logger))
 
-	log.Println("Start gRPC")
+	logger.Info("Start gRPC")
 
+	stopCh := make(chan struct{}, 0)
 	go func() {
 		if err = grpcServer.Serve(listener); err != nil {
-			log.Fatalln(err)
+			retErr = errors.Wrap(err, "serve")
 		}
+		close(stopCh)
 	}()
 
 	select {
+	case <-stopCh:
 	case <-ctx.Done():
 		grpcServer.Stop()
-		log.Println("gRPC stopped")
 	}
+	logger.Info("gRPC stopped")
+	return
 }

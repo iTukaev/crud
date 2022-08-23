@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgtype/pgxtype"
@@ -14,6 +13,7 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -33,16 +33,19 @@ type PgxPool interface {
 	Close()
 }
 
-func MustNew(pool *pgxpool.Pool) repoPkg.Interface {
-	log.Println("With PostgreSQL started")
+func New(pool *pgxpool.Pool, logger loggerPkg.Interface) repoPkg.Interface {
+	logger.Info("With PostgreSQL started")
 	return &repo{
-		pool: pool,
+		pool:   pool,
+		logger: logger,
 	}
 }
 
-func NewPostgres(ctx context.Context, host, port, user, password, dbname string) (*pgxpool.Pool, error) {
+func NewPostgres(ctx context.Context, host, port, user, password, dbname string, logger loggerPkg.Interface) (*pgxpool.Pool, error) {
 	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
+	logger.Debug("PostgreSQL connection", psqlConn)
+
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
 		return nil, fmt.Errorf("can't connect to database: %v\n", err)
@@ -55,7 +58,8 @@ func NewPostgres(ctx context.Context, host, port, user, password, dbname string)
 }
 
 type repo struct {
-	pool PgxPool
+	pool   PgxPool
+	logger loggerPkg.Interface
 }
 
 func (r *repo) UserCreate(ctx context.Context, user models.User) error {
@@ -67,6 +71,7 @@ func (r *repo) UserCreate(ctx context.Context, user models.User) error {
 	if err != nil {
 		return errors.Wrap(err, "postgres UserCreate: to sql")
 	}
+	r.logger.Debug("UserCreate", query, args)
 
 	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserCreate: insert")
@@ -88,6 +93,7 @@ func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
 	if err != nil {
 		return errors.Wrap(err, "postgres UserUpdate: to sql")
 	}
+	r.logger.Debug("UserUpdate", query, args)
 
 	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserUpdate: update")
@@ -106,6 +112,7 @@ func (r *repo) UserDelete(ctx context.Context, name string) error {
 	if err != nil {
 		return errors.Wrap(err, "postgres UserDelete: to sql")
 	}
+	r.logger.Debug("UserDelete", query, args)
 
 	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserDelete: delete")
@@ -125,6 +132,8 @@ func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
 	if err != nil {
 		return models.User{}, errors.Wrap(err, "postgres UserGet: to sql")
 	}
+	r.logger.Debug("UserGet", query, args)
+
 	row := r.pool.QueryRow(ctx, query, args...)
 	var user models.User
 	if err = row.Scan(&user.Name, &user.Password, &user.Email, &user.FullName, &user.CreatedAt); err != nil {
@@ -133,6 +142,7 @@ func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
 		}
 		return models.User{}, errors.Wrap(err, "postgres UserGet: get")
 	}
+	r.logger.Debug("UserGet", user.String())
 
 	return user, nil
 }
@@ -152,6 +162,7 @@ func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) (
 	if err != nil {
 		return nil, errors.Wrap(err, "postgres UserList: to sql")
 	}
+	r.logger.Debug("UserList", query, args)
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -166,10 +177,12 @@ func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) (
 		}
 		users = append(users, user)
 	}
+	r.logger.Debug("UserList", users)
 
 	return users, nil
 }
 
 func (r *repo) Close() {
 	r.pool.Close()
+	r.logger.Info("PostgreSQL connection closed")
 }

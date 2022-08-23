@@ -10,6 +10,7 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	repoMockPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/mock"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/emptylog"
 )
 
 var (
@@ -73,7 +74,7 @@ func Test_Create(t *testing.T) {
 					Return(c.createErr).MaxTimes(1),
 			)
 
-			userCtl := MustNew(mockRepo)
+			userCtl := New(mockRepo, emptylog.New())
 			err := userCtl.Create(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -124,7 +125,7 @@ func Test_Update(t *testing.T) {
 					Return(c.updateErr).MaxTimes(1),
 			)
 
-			userCtl := MustNew(mockRepo)
+			userCtl := New(mockRepo, emptylog.New())
 			err := userCtl.Update(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -175,7 +176,7 @@ func Test_Delete(t *testing.T) {
 					Return(c.deleteErr).MaxTimes(1),
 			)
 
-			userCtl := MustNew(mockRepo)
+			userCtl := New(mockRepo, emptylog.New())
 			err := userCtl.Delete(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -217,7 +218,7 @@ func Test_Get(t *testing.T) {
 					Return(c.expUser, c.getErr).Times(1),
 			)
 
-			userCtl := MustNew(mockRepo)
+			userCtl := New(mockRepo, emptylog.New())
 			expUser, err := userCtl.Get(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 			assert.Equal(t, expUser, c.expUser)
@@ -257,7 +258,7 @@ func Test_List(t *testing.T) {
 					Return(c.expList, c.listErr).Times(1),
 			)
 
-			userCtl := MustNew(mockRepo)
+			userCtl := New(mockRepo, emptylog.New())
 			expList, err := userCtl.List(context.Background(), true, 1, 1)
 			assert.ErrorIs(t, err, c.expErr)
 			assert.Equal(t, expList, c.expList)

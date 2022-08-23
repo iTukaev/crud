@@ -35,6 +35,8 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
+	c.logger.Debug(meta, "user create:", in.User.String())
+
 	if in.User.GetName() == "" {
 		c.logger.Error(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
@@ -59,7 +61,6 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 		return nil, err
 	}
 
-	c.logger.Debug(meta, "user create:", in.User.String())
 	return resp, nil
 }
 
@@ -68,6 +69,8 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
+	c.logger.Debug(meta, "user update:", in.GetName(), in.Profile.String())
+
 	if in.GetName() == "" {
 		c.logger.Error(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
@@ -75,11 +78,10 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 
 	resp, err := c.user.UserUpdate(ctx, in)
 	if err != nil {
-		c.logger.Error(meta, in.GetName(), "user update:", err)
+		c.logger.Error(meta, "user update:", err)
 		return nil, err
 	}
 
-	c.logger.Debug(meta, "user create:", in.GetName(), in.Profile.String())
 	return resp, nil
 }
 
@@ -88,6 +90,8 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
+	c.logger.Debug(meta, "user delete:", in.GetName())
+
 	if in.GetName() == "" {
 		c.logger.Error(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
@@ -95,11 +99,10 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 
 	resp, err := c.user.UserDelete(ctx, in)
 	if err != nil {
-		c.logger.Error(meta, in.GetName(), "user delete:", err)
+		c.logger.Error(meta, "user delete:", err)
 		return nil, err
 	}
 
-	c.logger.Debug(meta, "user delete:", in.GetName())
 	return resp, nil
 }
 
@@ -108,6 +111,8 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 	if !ok {
 		meta = undefinedMeta
 	}
+	c.logger.Debug(meta, "user get:", in.GetName())
+
 	if in.GetName() == "" {
 		c.logger.Error(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
@@ -115,11 +120,10 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 
 	resp, err := c.user.UserGet(ctx, in)
 	if err != nil {
-		c.logger.Error(meta, in.GetName(), "user get:", err)
+		c.logger.Error(meta, "user get:", err)
 		return nil, err
 	}
 
-	c.logger.Debug(meta, "user get:", in.GetName())
 	return resp, nil
 }
 
@@ -128,13 +132,14 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 	if !ok {
 		meta = undefinedMeta
 	}
+	c.logger.Debug(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
+
 	resp, err := c.user.UserList(ctx, in)
 	if err != nil {
 		c.logger.Error(meta, "user list:", err)
 		return nil, err
 	}
 
-	c.logger.Debug(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
 	return resp, nil
 }
 
@@ -143,6 +148,8 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 	if !ok {
 		meta = undefinedMeta
 	}
+	c.logger.Debug(meta, "all users list", in.GetOrder(), in.GetLimit())
+
 	dataStream, err := c.user.UserAllList(stream.Context(), &pb.UserAllListRequest{
 		Order: in.GetOrder(),
 		Limit: in.GetLimit(),
@@ -152,11 +159,9 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	c.logger.Debug(meta, "all users list", in.GetLimit(), in.GetOrder())
 	for {
 		next, err := dataStream.Recv()
 		if errors.Is(err, io.EOF) {
-			c.logger.Debug(meta, "all users list, stream ended")
 			return nil
 		}
 		if err != nil {

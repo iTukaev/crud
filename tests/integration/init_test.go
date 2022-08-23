@@ -17,6 +17,7 @@ import (
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/emptylog"
 	"gitlab.ozon.dev/iTukaev/homework/tests/integration/tdb"
 )
 
@@ -81,9 +82,10 @@ func (s *repositorySuite) SetupSuite() {
 	if err != nil {
 		log.Fatalf("Could not create table: %s", err)
 	}
-	data := postgresPkg.MustNew(s.db)
-	user := userPkg.MustNew(data)
-	s.user = apiDataPkg.New(user)
+	logger := emptylog.New()
+	data := postgresPkg.New(s.db, logger)
+	user := userPkg.New(data, logger)
+	s.user = apiDataPkg.New(user, logger)
 }
 
 func (s *repositorySuite) TearDownSuite() {
