@@ -1,8 +1,17 @@
-.PHONY: run
-run: build
-	./app
-build:
-	go build -o app ./cmd/app/app.go
+.PHONY: app data client
+app: a_build
+	@./app
+a_build:
+	@go build -o app ./cmd/app/app.go
+
+data: d_build
+	@./data
+d_build:
+	@go build -o data ./cmd/data/data.go
+
+client:
+	@go run ./cmd/client/client.go
+
 
 LOCAL_BIN:=$(CURDIR)/bin
 .PHONY: .deps buf

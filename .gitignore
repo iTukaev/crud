@@ -3,6 +3,7 @@ config.yaml
 
 # builded application file
 app
+data
 
 # DB directories
 postgresql

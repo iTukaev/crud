@@ -2,17 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"log"
 
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 )
 
 func main() {
@@ -29,23 +27,34 @@ func main() {
 	ctx := context.Background()
 	ctx = metadata.AppendToOutgoingContext(ctx, "custom", "hello")
 
-	response, err := client.UserAllList(ctx, &pb.UserAllListRequest{
-		Order: false,
-		Limit: 2,
+	_, err = client.UserCreate(ctx, &pb.UserCreateRequest{
+		User: &pbModels.User{
+			Name:     "IA",
+			Password: "123",
+			Email:    "123@123.ru",
+			FullName: "oslik",
+		},
 	})
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
-	for {
-		next, err := response.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			log.Println(err)
-		}
-		for i, user := range next.Users {
-			fmt.Println(i, user.String())
-		}
-	}
+	//response, err := client.UserAllList(ctx, &pb.UserAllListRequest{
+	//	Order: false,
+	//	Limit: 2,
+	//})
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
+	//for {
+	//	next, err := response.Recv()
+	//	if errors.Is(err, io.EOF) {
+	//		break
+	//	}
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//	for i, user := range next.Users {
+	//		fmt.Println(i, user.String())
+	//	}
+	//}
 }

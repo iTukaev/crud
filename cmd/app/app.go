@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"log"
 	"net"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	apiValidatorPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/validator"
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
+	"gitlab.ozon.dev/iTukaev/homework/internal/counter"
 	botPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot"
 	cmdAddPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/add"
 	cmdDeletePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/delete"
@@ -43,6 +45,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		logger.Info("Shutting down...")
+		logger.Close()
 		cancel()
 	}()
 
@@ -184,8 +187,15 @@ func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string, lo
 
 	mux := http.NewServeMux()
 	mux.Handle("/", gwMux)
+
 	fs := http.FileServer(http.Dir("./swagger"))
 	mux.Handle("/swagger/", http.StripPrefix("/swagger/", fs))
+
+	mux.Handle("/counters", expvar.Handler())
+	expvar.Publish("Validation service request", counter.Request)
+	expvar.Publish("Validation service response", counter.Response)
+	expvar.Publish("Validation service success", counter.Success)
+	expvar.Publish("Validation service error", counter.Errors)
 
 	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiValidatorPkg.New(client, logger)); err != nil {
 		return errors.Wrap(err, "HTTP gateway register")
