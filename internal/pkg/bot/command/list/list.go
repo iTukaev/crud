@@ -2,24 +2,26 @@ package list
 
 import (
 	"context"
-	"log"
 	"strconv"
 	"strings"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/status"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
 
-func New(api pb.UserClient) commandPkg.Interface {
+func New(api pb.UserClient, logger *zap.SugaredLogger) commandPkg.Interface {
 	return &command{
-		api: api,
+		api:    api,
+		logger: logger,
 	}
 }
 
 type command struct {
-	api pb.UserClient
+	api    pb.UserClient
+	logger *zap.SugaredLogger
 }
 
 func (c *command) Process(ctx context.Context, args string) string {
@@ -46,7 +48,7 @@ func (c *command) Process(ctx context.Context, args string) string {
 		Offset: offset,
 	})
 	if err != nil {
-		log.Printf("user list, arguments [%s]: %v\n", args, err)
+		c.logger.Errorf("user list, arguments [%s]: %v\n", args, err)
 		if st, ok := status.FromError(err); ok {
 			return st.Message()
 		}

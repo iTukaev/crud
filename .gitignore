@@ -5,6 +5,7 @@ config.yaml
 app
 data
 
-# DB directories
+# data directories
 postgresql
 pgbouncer
+kafka_data

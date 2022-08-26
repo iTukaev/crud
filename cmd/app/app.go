@@ -11,6 +11,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -28,7 +29,6 @@ import (
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
-	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/zaplog"
 )
 
 func main() {
@@ -36,16 +36,16 @@ func main() {
 	if err != nil {
 		log.Fatalln("Config init error:", err)
 	}
-	logger, err := zaplog.New(config.LogLevel())
+	logger, err := loggerPkg.New(config.LogLevel())
 	if err != nil {
 		log.Fatalln("Config init error:", err)
 	}
-	logger.Info("Start main")
+	logger.Infoln("Start main")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
-		logger.Info("Shutting down...")
-		logger.Close()
+		logger.Infoln("Shutting down...")
+		_ = logger.Sync()
 		cancel()
 	}()
 
@@ -54,7 +54,7 @@ func main() {
 
 	go func() {
 		if err = start(ctx, config, logger); err != nil {
-			logger.Error(err)
+			logger.Errorln(err)
 			c <- os.Interrupt
 		}
 	}()
@@ -64,24 +64,24 @@ func main() {
 	}
 }
 
-func start(ctx context.Context, config configPkg.Interface, logger loggerPkg.Interface) (retErr error) {
+func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredLogger) (retErr error) {
 	conn, err := grpc.Dial(config.RepoAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return errors.Wrap(err, "gRPC client connection")
 	}
 
 	client := pb.NewUserClient(conn)
-
 	stopCh := make(chan struct{}, 0)
+	server := apiValidatorPkg.New(client, logger)
 
 	go func() {
-		if err = runGRPCServer(ctx, client, config.GRPCAddr(), logger); err != nil {
+		if err = runGRPCServer(ctx, server, config.GRPCAddr(), logger); err != nil {
 			retErr = errors.Wrap(err, "gRPC server")
 		}
 		close(stopCh)
 	}()
 	go func() {
-		if err = runHTTPServer(ctx, client, config.HTTPAddr(), logger); err != nil {
+		if err = runHTTPServer(ctx, server, config.HTTPAddr(), logger); err != nil {
 			retErr = errors.Wrap(err, "HTTP server")
 		}
 		close(stopCh)
@@ -100,25 +100,25 @@ func start(ctx context.Context, config configPkg.Interface, logger loggerPkg.Int
 	return retErr
 }
 
-func runBot(ctx context.Context, client pb.UserClient, apiKey string, logger loggerPkg.Interface) error {
+func runBot(ctx context.Context, client pb.UserClient, apiKey string, logger *zap.SugaredLogger) error {
 	bot, err := botPkg.New(apiKey, logger)
 	if err != nil {
 		return err
 	}
 
-	commandAdd := cmdAddPkg.New(client)
+	commandAdd := cmdAddPkg.New(client, logger)
 	bot.RegisterCommand(commandAdd)
 
-	commandUpdate := cmdUpdatePkg.New(client)
+	commandUpdate := cmdUpdatePkg.New(client, logger)
 	bot.RegisterCommand(commandUpdate)
 
-	commandDelete := cmdDeletePkg.New(client)
+	commandDelete := cmdDeletePkg.New(client, logger)
 	bot.RegisterCommand(commandDelete)
 
-	commandGet := cmdGetPkg.New(client)
+	commandGet := cmdGetPkg.New(client, logger)
 	bot.RegisterCommand(commandGet)
 
-	commandList := cmdListPkg.New(client)
+	commandList := cmdListPkg.New(client, logger)
 	bot.RegisterCommand(commandList)
 
 	commandHelp := cmdHelpPkg.New(map[string]string{
@@ -130,7 +130,7 @@ func runBot(ctx context.Context, client pb.UserClient, apiKey string, logger log
 	})
 	bot.RegisterCommand(commandHelp)
 
-	logger.Info("Start TG bot")
+	logger.Infoln("Start TG bot")
 	stopCh := make(chan struct{}, 0)
 	go func() {
 		bot.Run(ctx)
@@ -142,20 +142,20 @@ func runBot(ctx context.Context, client pb.UserClient, apiKey string, logger log
 	case <-ctx.Done():
 		bot.Stop()
 	}
-	logger.Info("Bot stopped")
+	logger.Infoln("Bot stopped")
 	return nil
 }
 
-func runGRPCServer(ctx context.Context, client pb.UserClient, grpcSrv string, logger loggerPkg.Interface) (retErr error) {
+func runGRPCServer(ctx context.Context, server pb.UserServer, grpcSrv string, logger *zap.SugaredLogger) (retErr error) {
 	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		return errors.Wrap(err, "listener")
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterUserServer(grpcServer, apiValidatorPkg.New(client, logger))
+	pb.RegisterUserServer(grpcServer, server)
 
-	logger.Info("Start gRPC")
+	logger.Infoln("Start gRPC")
 	stopCh := make(chan struct{}, 0)
 	go func() {
 		if err = grpcServer.Serve(listener); err != nil {
@@ -169,11 +169,11 @@ func runGRPCServer(ctx context.Context, client pb.UserClient, grpcSrv string, lo
 	case <-ctx.Done():
 		grpcServer.Stop()
 	}
-	logger.Info("gRPC stopped")
+	logger.Infoln("gRPC stopped")
 	return
 }
 
-func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string, logger loggerPkg.Interface) (retErr error) {
+func runHTTPServer(ctx context.Context, server pb.UserServer, httpSrv string, logger *zap.SugaredLogger) (retErr error) {
 	gwMux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
@@ -197,7 +197,7 @@ func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string, lo
 	expvar.Publish("Validation service success", counter.Success)
 	expvar.Publish("Validation service error", counter.Errors)
 
-	if err := pb.RegisterUserHandlerServer(ctx, gwMux, apiValidatorPkg.New(client, logger)); err != nil {
+	if err := pb.RegisterUserHandlerServer(ctx, gwMux, server); err != nil {
 		return errors.Wrap(err, "HTTP gateway register")
 	}
 
@@ -205,7 +205,7 @@ func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string, lo
 		Addr:    httpSrv,
 		Handler: mux,
 	}
-	logger.Info("Start HTTP gateway")
+	logger.Infoln("Start HTTP gateway")
 	stopCh := make(chan struct{}, 0)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -221,9 +221,9 @@ func runHTTPServer(ctx context.Context, client pb.UserClient, httpSrv string, lo
 	case <-stopCh:
 	case <-ctx.Done():
 		if err := srv.Close(); err != nil {
-			logger.Error("HTTP server close error:", err)
+			logger.Errorln("HTTP server close error:", err)
 		}
 	}
-	logger.Info("HTTP gateway stopped")
+	logger.Infoln("HTTP gateway stopped")
 	return nil
 }

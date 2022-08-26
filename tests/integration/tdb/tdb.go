@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
-	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/emptylog"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 )
 
 func NewTestDB(ctx context.Context) (*pgxpool.Pool, error) {
-	pool, err := postgresPkg.NewPostgres(ctx, Host, Port, User, Password, DBName, emptylog.New())
+	pool, err := postgresPkg.NewPostgres(ctx, Host, Port, User, Password, DBName, loggerPkg.NewFatal())
 	if err != nil {
 		return nil, err
 	}

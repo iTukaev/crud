@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
-	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -33,18 +33,18 @@ type PgxPool interface {
 	Close()
 }
 
-func New(pool *pgxpool.Pool, logger loggerPkg.Interface) repoPkg.Interface {
-	logger.Info("With PostgreSQL started")
+func New(pool *pgxpool.Pool, logger *zap.SugaredLogger) repoPkg.Interface {
+	logger.Infoln("With PostgreSQL started")
 	return &repo{
 		pool:   pool,
 		logger: logger,
 	}
 }
 
-func NewPostgres(ctx context.Context, host, port, user, password, dbname string, logger loggerPkg.Interface) (*pgxpool.Pool, error) {
+func NewPostgres(ctx context.Context, host, port, user, password, dbname string, logger *zap.SugaredLogger) (*pgxpool.Pool, error) {
 	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
-	logger.Debug("PostgreSQL connection", psqlConn)
+	logger.Debugln("PostgreSQL connection", psqlConn)
 
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
@@ -59,7 +59,7 @@ func NewPostgres(ctx context.Context, host, port, user, password, dbname string,
 
 type repo struct {
 	pool   PgxPool
-	logger loggerPkg.Interface
+	logger *zap.SugaredLogger
 }
 
 func (r *repo) UserCreate(ctx context.Context, user models.User) error {
@@ -71,7 +71,7 @@ func (r *repo) UserCreate(ctx context.Context, user models.User) error {
 	if err != nil {
 		return errors.Wrap(err, "postgres UserCreate: to sql")
 	}
-	r.logger.Debug("UserCreate", query, args)
+	r.logger.Debugln("UserCreate", query, args)
 
 	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserCreate: insert")
@@ -93,7 +93,7 @@ func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
 	if err != nil {
 		return errors.Wrap(err, "postgres UserUpdate: to sql")
 	}
-	r.logger.Debug("UserUpdate", query, args)
+	r.logger.Debugln("UserUpdate", query, args)
 
 	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserUpdate: update")
@@ -112,7 +112,7 @@ func (r *repo) UserDelete(ctx context.Context, name string) error {
 	if err != nil {
 		return errors.Wrap(err, "postgres UserDelete: to sql")
 	}
-	r.logger.Debug("UserDelete", query, args)
+	r.logger.Debugln("UserDelete", query, args)
 
 	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
 		return errors.Wrap(err, "postgres UserDelete: delete")
@@ -132,7 +132,7 @@ func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
 	if err != nil {
 		return models.User{}, errors.Wrap(err, "postgres UserGet: to sql")
 	}
-	r.logger.Debug("UserGet", query, args)
+	r.logger.Debugln("UserGet", query, args)
 
 	row := r.pool.QueryRow(ctx, query, args...)
 	var user models.User
@@ -142,7 +142,7 @@ func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
 		}
 		return models.User{}, errors.Wrap(err, "postgres UserGet: get")
 	}
-	r.logger.Debug("UserGet", user.String())
+	r.logger.Debugln("UserGet", user.String())
 
 	return user, nil
 }
@@ -162,7 +162,7 @@ func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) (
 	if err != nil {
 		return nil, errors.Wrap(err, "postgres UserList: to sql")
 	}
-	r.logger.Debug("UserList", query, args)
+	r.logger.Debugln("UserList", query, args)
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -177,12 +177,12 @@ func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) (
 		}
 		users = append(users, user)
 	}
-	r.logger.Debug("UserList", users)
+	r.logger.Debugln("UserList", users)
 
 	return users, nil
 }
 
 func (r *repo) Close() {
 	r.pool.Close()
-	r.logger.Info("PostgreSQL connection closed")
+	r.logger.Infoln("PostgreSQL connection closed")
 }

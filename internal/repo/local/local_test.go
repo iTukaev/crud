@@ -10,6 +10,7 @@ import (
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 var (
@@ -48,6 +49,7 @@ func TestCache_UserCreate(t *testing.T) {
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
 		poolCh: make(chan struct{}, 1),
+		logger: loggerPkg.NewFatal(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -95,6 +97,7 @@ func TestCache_UserUpdate(t *testing.T) {
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
 		poolCh: make(chan struct{}, 1),
+		logger: loggerPkg.NewFatal(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -146,6 +149,7 @@ func TestCache_UserDelete(t *testing.T) {
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
 		poolCh: make(chan struct{}, 1),
+		logger: loggerPkg.NewFatal(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -194,6 +198,7 @@ func TestCache_UserGet(t *testing.T) {
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
 		poolCh: make(chan struct{}, 1),
+		logger: loggerPkg.NewFatal(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -241,6 +246,7 @@ func TestCache_UserList(t *testing.T) {
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
 		poolCh: make(chan struct{}, 1),
+		logger: loggerPkg.NewFatal(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -328,6 +334,7 @@ func TestCache_Close(t *testing.T) {
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
 		poolCh: make(chan struct{}, 1),
+		logger: loggerPkg.NewFatal(),
 	}
 
 	t.Run("success memory clear", func(t *testing.T) {

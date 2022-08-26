@@ -3,9 +3,9 @@ package add
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/status"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
@@ -18,14 +18,16 @@ const (
 	addDescription = "create user [/add <name> <password> <email> <full_name>]"
 )
 
-func New(api pb.UserClient) commandPkg.Interface {
+func New(api pb.UserClient, logger *zap.SugaredLogger) commandPkg.Interface {
 	return &command{
-		api: api,
+		api:    api,
+		logger: logger,
 	}
 }
 
 type command struct {
-	api pb.UserClient
+	api    pb.UserClient
+	logger *zap.SugaredLogger
 }
 
 func (c *command) Process(ctx context.Context, args string) string {
@@ -42,7 +44,7 @@ func (c *command) Process(ctx context.Context, args string) string {
 			FullName: params[3],
 		},
 	}); err != nil {
-		log.Printf("user [%s] create: %v\n", params[0], err)
+		c.logger.Errorf("user [%s] create: %v\n", params[0], err)
 		if st, ok := status.FromError(err); ok {
 			return st.Message()
 		}

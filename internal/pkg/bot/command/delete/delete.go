@@ -3,9 +3,9 @@ package delete
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/status"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
@@ -17,14 +17,16 @@ const (
 	deleteDescription = "delete user [/del <name>]"
 )
 
-func New(api pb.UserClient) commandPkg.Interface {
+func New(api pb.UserClient, logger *zap.SugaredLogger) commandPkg.Interface {
 	return &command{
-		api: api,
+		api:    api,
+		logger: logger,
 	}
 }
 
 type command struct {
-	api pb.UserClient
+	api    pb.UserClient
+	logger *zap.SugaredLogger
 }
 
 func (c *command) Process(ctx context.Context, args string) string {
@@ -36,7 +38,7 @@ func (c *command) Process(ctx context.Context, args string) string {
 	if _, err := c.api.UserDelete(ctx, &pb.UserDeleteRequest{
 		Name: args,
 	}); err != nil {
-		log.Printf("user [%s] delete: %v\n", args, err)
+		c.logger.Errorf("user [%s] delete: %v\n", args, err)
 		if st, ok := status.FromError(err); ok {
 			return st.Message()
 		}

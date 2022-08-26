@@ -9,6 +9,7 @@ import (
 	"runtime"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	apiDataPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/data"
@@ -20,7 +21,6 @@ import (
 	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
-	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/zaplog"
 )
 
 func main() {
@@ -28,15 +28,15 @@ func main() {
 	if err != nil {
 		log.Fatalln("Config init error:", err)
 	}
-	logger, err := zaplog.New(config.LogLevel())
+	logger, err := loggerPkg.New(config.LogLevel())
 	if err != nil {
 		log.Fatalln("Config init error:", err)
 	}
-	logger.Info("Start main")
+	logger.Infoln("Start main")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
-		logger.Info("Shutting down...")
+		logger.Infoln("Shutting down...")
 		cancel()
 	}()
 
@@ -45,7 +45,7 @@ func main() {
 
 	go func() {
 		if err = runGRPCServer(ctx, config, logger); err != nil {
-			logger.Error("gRPC", err)
+			logger.Errorln("gRPC", err)
 		}
 		c <- os.Interrupt
 	}()
@@ -53,7 +53,7 @@ func main() {
 	<-c
 }
 
-func runGRPCServer(ctx context.Context, config configPkg.Interface, logger loggerPkg.Interface) (retErr error) {
+func runGRPCServer(ctx context.Context, config configPkg.Interface, logger *zap.SugaredLogger) (retErr error) {
 	var data repoPkg.Interface
 	if config.Local() {
 		workers := config.WorkersCount()
@@ -65,7 +65,7 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface, logger logge
 		pg := config.PGConfig()
 		pool, err := postgresPkg.NewPostgres(ctx, pg.Host, pg.Port, pg.User, pg.Password, pg.DBName, logger)
 		if err != nil {
-			logger.Error("New Postgres", err)
+			logger.Errorln("New Postgres", err)
 			return err
 		}
 		data = postgresPkg.New(pool, logger)
@@ -80,7 +80,7 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface, logger logge
 	grpcServer := grpc.NewServer()
 	pb.RegisterUserServer(grpcServer, apiDataPkg.New(user, logger))
 
-	logger.Info("Start gRPC")
+	logger.Infoln("Start gRPC")
 
 	stopCh := make(chan struct{}, 0)
 	go func() {
@@ -95,6 +95,6 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface, logger logge
 	case <-ctx.Done():
 		grpcServer.Stop()
 	}
-	logger.Info("gRPC stopped")
+	logger.Infoln("gRPC stopped")
 	return
 }

@@ -14,6 +14,7 @@ import (
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"
 )
 
@@ -66,7 +67,7 @@ func TestAddCommand_Process(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockClient := apiMockPkg.NewMockUserClient(ctl)
-			addCommand := New(mockClient)
+			addCommand := New(mockClient, loggerPkg.NewFatal())
 
 			gomock.InOrder(
 				mockClient.EXPECT().UserCreate(ctx, &pb.UserCreateRequest{
@@ -86,7 +87,7 @@ func TestAddCommand_Name(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockClient := apiMockPkg.NewMockUserClient(ctl)
-		addCommand := New(mockClient)
+		addCommand := New(mockClient, loggerPkg.NewFatal())
 
 		name := addCommand.Name()
 
@@ -100,7 +101,7 @@ func TestAddCommand_Description(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockClient := apiMockPkg.NewMockUserClient(ctl)
-		addCommand := New(mockClient)
+		addCommand := New(mockClient, loggerPkg.NewFatal())
 
 		description := addCommand.Description()
 

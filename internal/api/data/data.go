@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -13,7 +14,6 @@ import (
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
-	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	undefinedMeta = "undefined"
 )
 
-func New(user userPkg.Interface, logger loggerPkg.Interface) pb.UserServer {
+func New(user userPkg.Interface, logger *zap.SugaredLogger) pb.UserServer {
 	return &core{
 		user:   user,
 		logger: logger,
@@ -31,7 +31,7 @@ func New(user userPkg.Interface, logger loggerPkg.Interface) pb.UserServer {
 
 type core struct {
 	user   userPkg.Interface
-	logger loggerPkg.Interface
+	logger *zap.SugaredLogger
 	pb.UnimplementedUserServer
 }
 
@@ -40,7 +40,7 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user create:", in.User.String())
+	c.logger.Debugln(meta, "user create:", in.User.String())
 
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
@@ -52,7 +52,7 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 		FullName:  in.User.GetFullName(),
 		CreatedAt: in.User.GetCreatedAt(),
 	}); err != nil {
-		c.logger.Error(meta, "user create:", err)
+		c.logger.Errorln(meta, "user create:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserAlreadyExists):
@@ -72,7 +72,7 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user update:", in.GetName(), in.Profile.String())
+	c.logger.Debugln(meta, "user update:", in.GetName(), in.Profile.String())
 
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
@@ -83,7 +83,7 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 		Email:    in.Profile.GetEmail(),
 		FullName: in.Profile.GetFullName(),
 	}); err != nil {
-		c.logger.Error(meta, "user update:", err)
+		c.logger.Errorln(meta, "user update:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserNotFound):
@@ -103,13 +103,13 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user delete:", in.GetName())
+	c.logger.Debugln(meta, "user delete:", in.GetName())
 
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	if err := c.user.Delete(ctx, in.GetName()); err != nil {
-		c.logger.Error(meta, "user delete:", err)
+		c.logger.Errorln(meta, "user delete:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserNotFound):
@@ -129,14 +129,14 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user get:", in.GetName())
+	c.logger.Debugln(meta, "user get:", in.GetName())
 
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	user, err := c.user.Get(ctx, in.GetName())
 	if err != nil {
-		c.logger.Error(meta, "user get:", err)
+		c.logger.Errorln(meta, "user get:", err)
 
 		switch {
 		case errors.Is(err, errorsPkg.ErrUserNotFound):
@@ -158,14 +158,14 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
+	c.logger.Debugln(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
 
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	users, err := c.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
 	if err != nil {
-		c.logger.Error(meta, "user list:", err)
+		c.logger.Errorln(meta, "user list:", err)
 		if errors.Is(err, errorsPkg.ErrTimeout) {
 			return &pb.UserListResponse{}, status.Error(codes.DeadlineExceeded, err.Error())
 		}
@@ -182,13 +182,13 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "all users list", in.GetOrder(), in.GetLimit())
+	c.logger.Debugln(meta, "all users list", in.GetOrder(), in.GetLimit())
 
 	offset := uint64(0)
 	for {
 		users, err := c.user.List(stream.Context(), in.GetOrder(), in.GetLimit(), offset)
 		if err != nil {
-			c.logger.Error(meta, "Get list", err)
+			c.logger.Errorln(meta, "Get list", err)
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -199,7 +199,7 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 		if err = stream.Send(&pb.UserAllListResponse{
 			Users: adaptor.ToUserListPbModel(users),
 		}); err != nil {
-			c.logger.Error(meta, "all users list, send chunk", err)
+			c.logger.Errorln(meta, "all users list, send chunk", err)
 			return status.Error(codes.Internal, err.Error())
 		}
 		offset++

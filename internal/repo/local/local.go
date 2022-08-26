@@ -2,20 +2,19 @@ package local
 
 import (
 	"context"
-	"log"
 	"sort"
 	"sync"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
-	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
-func New(workersCount int, logger loggerPkg.Interface) repoPkg.Interface {
-	log.Println("With local storage started")
+func New(workersCount int, logger *zap.SugaredLogger) repoPkg.Interface {
+	logger.Infoln("With local storage started")
 	return &cache{
 		mu:     sync.RWMutex{},
 		data:   make(map[string]models.User),
@@ -28,11 +27,11 @@ type cache struct {
 	mu     sync.RWMutex
 	data   map[string]models.User
 	poolCh chan struct{}
-	logger loggerPkg.Interface
+	logger *zap.SugaredLogger
 }
 
 func (c *cache) UserCreate(ctx context.Context, user models.User) error {
-	c.logger.Debug("UserCreate, cached func", user.String())
+	c.logger.Debugln("UserCreate, cached func", user.String())
 	select {
 	case <-ctx.Done():
 		return errorsPkg.ErrTimeout
@@ -49,7 +48,7 @@ func (c *cache) UserCreate(ctx context.Context, user models.User) error {
 }
 
 func (c *cache) UserUpdate(ctx context.Context, user models.User) error {
-	c.logger.Debug("UserUpdate, cached func", user.String())
+	c.logger.Debugln("UserUpdate, cached func", user.String())
 	select {
 	case <-ctx.Done():
 		return errorsPkg.ErrTimeout
@@ -77,7 +76,7 @@ func (c *cache) UserUpdate(ctx context.Context, user models.User) error {
 }
 
 func (c *cache) UserDelete(ctx context.Context, name string) error {
-	c.logger.Debug("UserDelete, cached func", name)
+	c.logger.Debugln("UserDelete, cached func", name)
 	select {
 	case <-ctx.Done():
 		return errorsPkg.ErrTimeout
@@ -94,7 +93,7 @@ func (c *cache) UserDelete(ctx context.Context, name string) error {
 }
 
 func (c *cache) UserGet(ctx context.Context, name string) (models.User, error) {
-	c.logger.Debug("UserGet, cached func", name)
+	c.logger.Debugln("UserGet, cached func", name)
 	select {
 	case <-ctx.Done():
 		return models.User{}, errorsPkg.ErrTimeout
@@ -114,7 +113,7 @@ func (c *cache) UserGet(ctx context.Context, name string) (models.User, error) {
 }
 
 func (c *cache) UserList(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error) {
-	c.logger.Debug("UserList, cached func", order, limit, offset)
+	c.logger.Debugln("UserList, cached func", order, limit, offset)
 	select {
 	case <-ctx.Done():
 		return nil, errorsPkg.ErrTimeout
@@ -156,5 +155,5 @@ func (c *cache) Close() {
 	defer c.mu.Unlock()
 	c.data = nil
 	close(c.poolCh)
-	c.logger.Info("Cache cleaned")
+	c.logger.Infoln("Cache cleaned")
 }

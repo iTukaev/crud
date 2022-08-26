@@ -11,7 +11,7 @@ import (
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
-	"gitlab.ozon.dev/iTukaev/homework/pkg/logger/emptylog"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 var (
@@ -56,7 +56,7 @@ func TestRepo_UserCreate(t *testing.T) {
 
 			r := &repo{
 				pool:   mock,
-				logger: emptylog.New(),
+				logger: loggerPkg.NewFatal(),
 			}
 			err = r.UserCreate(context.Background(), user)
 			assert.ErrorIs(t, err, c.expErr)
@@ -96,7 +96,7 @@ func TestRepo_UserUpdate(t *testing.T) {
 
 			r := &repo{
 				pool:   mock,
-				logger: emptylog.New(),
+				logger: loggerPkg.NewFatal(),
 			}
 			err = r.UserUpdate(context.Background(), user)
 			assert.ErrorIs(t, err, c.expErr)
@@ -136,7 +136,7 @@ func TestRepo_UserDelete(t *testing.T) {
 
 			r := &repo{
 				pool:   mock,
-				logger: emptylog.New(),
+				logger: loggerPkg.NewFatal(),
 			}
 			err = r.UserDelete(context.Background(), user.Name)
 			assert.ErrorIs(t, err, c.expErr)
@@ -187,7 +187,7 @@ func TestRepo_UserGet(t *testing.T) {
 
 			r := &repo{
 				pool:   mock,
-				logger: emptylog.New(),
+				logger: loggerPkg.NewFatal(),
 			}
 			_, err = r.UserGet(context.Background(), user.Name)
 			assert.ErrorIs(t, err, c.expErr)
@@ -235,7 +235,7 @@ func TestRepo_UserList(t *testing.T) {
 
 			r := &repo{
 				pool:   mock,
-				logger: emptylog.New(),
+				logger: loggerPkg.NewFatal(),
 			}
 			_, err = r.UserList(context.Background(), order, limit, offset)
 			assert.ErrorIs(t, err, c.expErr)

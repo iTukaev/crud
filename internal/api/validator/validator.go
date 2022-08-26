@@ -5,13 +5,14 @@ import (
 	"io"
 	"time"
 
+	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/counter"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
-	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -25,7 +26,7 @@ const (
 	userAllList = "all_list"
 )
 
-func New(user pb.UserClient, logger loggerPkg.Interface) pb.UserServer {
+func New(user pb.UserClient, logger *zap.SugaredLogger) pb.UserServer {
 	return &core{
 		user:   user,
 		logger: logger,
@@ -33,9 +34,10 @@ func New(user pb.UserClient, logger loggerPkg.Interface) pb.UserServer {
 }
 
 type core struct {
+	pr   sarama.AsyncProducer
 	user pb.UserClient
 	pb.UnimplementedUserServer
-	logger loggerPkg.Interface
+	logger *zap.SugaredLogger
 }
 
 func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
@@ -46,26 +48,26 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user create:", in.User.String())
+	c.logger.Debugln(meta, "user create:", in.User.String())
 
 	if in.User.GetName() == "" {
 		counter.Errors.Inc(userCreate)
-		c.logger.Error(meta, "empty [name]:")
+		c.logger.Errorln(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
 	}
 	if in.User.GetPassword() == "" {
 		counter.Errors.Inc(userCreate)
-		c.logger.Error(meta, "empty [password]:")
+		c.logger.Errorln(meta, "empty [password]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [password] cannot be empty").Error())
 	}
 	if in.User.GetEmail() == "" {
 		counter.Errors.Inc(userCreate)
-		c.logger.Error(meta, "empty [email]:")
+		c.logger.Errorln(meta, "empty [email]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [email] cannot be empty").Error())
 	}
 	if in.User.GetFullName() == "" {
 		counter.Errors.Inc(userCreate)
-		c.logger.Error(meta, "empty [full_name]:")
+		c.logger.Errorln(meta, "empty [full_name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [full_name] cannot be empty").Error())
 	}
 	in.User.CreatedAt = time.Now().Unix()
@@ -73,7 +75,7 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 	resp, err := c.user.UserCreate(ctx, in)
 	if err != nil {
 		counter.Errors.Inc(userCreate)
-		c.logger.Error(meta, "user create:", err)
+		c.logger.Errorln(meta, "user create:", err)
 		return nil, err
 	}
 
@@ -89,18 +91,18 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user update:", in.GetName(), in.Profile.String())
+	c.logger.Debugln(meta, "user update:", in.GetName(), in.Profile.String())
 
 	if in.GetName() == "" {
 		counter.Errors.Inc(userUpdate)
-		c.logger.Error(meta, "empty [name]:")
+		c.logger.Errorln(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
 	}
 
 	resp, err := c.user.UserUpdate(ctx, in)
 	if err != nil {
 		counter.Errors.Inc(userUpdate)
-		c.logger.Error(meta, "user update:", err)
+		c.logger.Errorln(meta, "user update:", err)
 		return nil, err
 	}
 
@@ -116,18 +118,18 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user delete:", in.GetName())
+	c.logger.Debugln(meta, "user delete:", in.GetName())
 
 	if in.GetName() == "" {
 		counter.Errors.Inc(userDelete)
-		c.logger.Error(meta, "empty [name]:")
+		c.logger.Errorln(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
 	}
 
 	resp, err := c.user.UserDelete(ctx, in)
 	if err != nil {
 		counter.Errors.Inc(userDelete)
-		c.logger.Error(meta, "user delete:", err)
+		c.logger.Errorln(meta, "user delete:", err)
 		return nil, err
 	}
 
@@ -143,18 +145,18 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user get:", in.GetName())
+	c.logger.Debugln(meta, "user get:", in.GetName())
 
 	if in.GetName() == "" {
 		counter.Errors.Inc(userDelete)
-		c.logger.Error(meta, "empty [name]:")
+		c.logger.Errorln(meta, "empty [name]:")
 		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
 	}
 
 	resp, err := c.user.UserGet(ctx, in)
 	if err != nil {
 		counter.Errors.Inc(userDelete)
-		c.logger.Error(meta, "user get:", err)
+		c.logger.Errorln(meta, "user get:", err)
 		return nil, err
 	}
 
@@ -170,12 +172,12 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
+	c.logger.Debugln(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
 
 	resp, err := c.user.UserList(ctx, in)
 	if err != nil {
 		counter.Errors.Inc(userList)
-		c.logger.Error(meta, "user list:", err)
+		c.logger.Errorln(meta, "user list:", err)
 		return nil, err
 	}
 
@@ -191,7 +193,7 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 	if !ok {
 		meta = undefinedMeta
 	}
-	c.logger.Debug(meta, "all users list", in.GetOrder(), in.GetLimit())
+	c.logger.Debugln(meta, "all users list", in.GetOrder(), in.GetLimit())
 
 	dataStream, err := c.user.UserAllList(stream.Context(), &pb.UserAllListRequest{
 		Order: in.GetOrder(),
@@ -199,7 +201,7 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 	})
 	if err != nil {
 		counter.Errors.Inc(userAllList)
-		c.logger.Error(meta, "all users list, stream", err)
+		c.logger.Errorln(meta, "all users list, stream", err)
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -211,12 +213,12 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 		}
 		if err != nil {
 			counter.Errors.Inc(userAllList)
-			c.logger.Error(meta, "all users list, next chunk", err)
+			c.logger.Errorln(meta, "all users list, next chunk", err)
 			return err
 		}
 		if err = stream.Send(next); err != nil {
 			counter.Errors.Inc(userAllList)
-			c.logger.Error(meta, "all users list, send chunk", err)
+			c.logger.Errorln(meta, "all users list, send chunk", err)
 			return status.Error(codes.Internal, err.Error())
 		}
 	}
