@@ -9,9 +9,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
-	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 )
@@ -33,95 +32,6 @@ type core struct {
 	user   userPkg.Interface
 	logger *zap.SugaredLogger
 	pb.UnimplementedUserServer
-}
-
-func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
-	meta, ok := ctx.Value("meta").(string)
-	if !ok {
-		meta = undefinedMeta
-	}
-	c.logger.Debugln(meta, "user create:", in.User.String())
-
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	if err := c.user.Create(ctx, models.User{
-		Name:      in.User.GetName(),
-		Password:  in.User.GetPassword(),
-		Email:     in.User.GetEmail(),
-		FullName:  in.User.GetFullName(),
-		CreatedAt: in.User.GetCreatedAt(),
-	}); err != nil {
-		c.logger.Errorln(meta, "user create:", err)
-
-		switch {
-		case errors.Is(err, errorsPkg.ErrUserAlreadyExists):
-			return nil, status.Error(codes.AlreadyExists, err.Error())
-		case errors.Is(err, errorsPkg.ErrTimeout):
-			return nil, status.Error(codes.DeadlineExceeded, err.Error())
-		}
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return &pb.UserCreateResponse{}, nil
-}
-
-func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
-	meta, ok := ctx.Value("meta").(string)
-	if !ok {
-		meta = undefinedMeta
-	}
-	c.logger.Debugln(meta, "user update:", in.GetName(), in.Profile.String())
-
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	if err := c.user.Update(ctx, models.User{
-		Name:     in.GetName(),
-		Password: in.Profile.GetPassword(),
-		Email:    in.Profile.GetEmail(),
-		FullName: in.Profile.GetFullName(),
-	}); err != nil {
-		c.logger.Errorln(meta, "user update:", err)
-
-		switch {
-		case errors.Is(err, errorsPkg.ErrUserNotFound):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, errorsPkg.ErrTimeout):
-			return nil, status.Error(codes.DeadlineExceeded, err.Error())
-		}
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return &pb.UserUpdateResponse{}, nil
-}
-
-func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
-	meta, ok := ctx.Value("meta").(string)
-	if !ok {
-		meta = undefinedMeta
-	}
-	c.logger.Debugln(meta, "user delete:", in.GetName())
-
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	if err := c.user.Delete(ctx, in.GetName()); err != nil {
-		c.logger.Errorln(meta, "user delete:", err)
-
-		switch {
-		case errors.Is(err, errorsPkg.ErrUserNotFound):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, errorsPkg.ErrTimeout):
-			return nil, status.Error(codes.DeadlineExceeded, err.Error())
-		}
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return &pb.UserDeleteResponse{}, nil
 }
 
 func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {

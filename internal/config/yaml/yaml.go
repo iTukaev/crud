@@ -58,3 +58,7 @@ func (config) Local() bool {
 func (config) WorkersCount() int {
 	return viper.GetInt("workers")
 }
+
+func (config) Brokers() []string {
+	return viper.GetStringSlice("brokers")
+}

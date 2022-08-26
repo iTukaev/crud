@@ -7,9 +7,9 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	commandPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command"
-	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 const (
@@ -22,7 +22,7 @@ type Interface interface {
 	Stop()
 }
 
-func New(id string, logger loggerPkg.Interface) (Interface, error) {
+func New(id string, logger *zap.SugaredLogger) (Interface, error) {
 	bot, err := tgbotapi.NewBotAPI(id)
 	if err != nil {
 		return nil, errors.Wrap(err, "new API bot")
@@ -40,7 +40,7 @@ func New(id string, logger loggerPkg.Interface) (Interface, error) {
 type commander struct {
 	bot    *tgbotapi.BotAPI
 	route  map[string]commandPkg.Interface
-	logger loggerPkg.Interface
+	logger *zap.SugaredLogger
 }
 
 // RegisterCommand - not thread safe

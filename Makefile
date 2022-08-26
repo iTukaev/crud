@@ -1,8 +1,13 @@
-.PHONY: app data client
-app: a_build
-	@./app
-a_build:
-	@go build -o app ./cmd/app/app.go
+.PHONY: receiver validator data client
+receiver: r_build
+	@./receiver
+r_build:
+	@go build -o receiver ./cmd/receiver/receiver.go
+
+validator: v_build
+	@./validator
+v_build:
+	@go build -o validator ./cmd/validator/validator.go
 
 data: d_build
 	@./data

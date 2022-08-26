@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"

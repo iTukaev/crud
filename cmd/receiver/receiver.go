@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/Shopify/sarama"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -16,7 +17,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	apiValidatorPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/validator"
+	apiReceiverPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/receiver"
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	"gitlab.ozon.dev/iTukaev/homework/internal/counter"
@@ -72,7 +73,14 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 
 	client := pb.NewUserClient(conn)
 	stopCh := make(chan struct{}, 0)
-	server := apiValidatorPkg.New(client, logger)
+
+	cfg := sarama.NewConfig()
+	cfg.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer(config.Brokers(), cfg)
+	if err != nil {
+		return errors.Wrap(err, "new SyncProducer")
+	}
+	server := apiReceiverPkg.New(client, logger, producer)
 
 	go func() {
 		if err = runGRPCServer(ctx, server, config.GRPCAddr(), logger); err != nil {

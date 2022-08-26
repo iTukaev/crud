@@ -7,8 +7,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 	repoMockPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/mock"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )

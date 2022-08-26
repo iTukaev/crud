@@ -7,4 +7,5 @@ var (
 	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrTimeout           = errors.New("deadline exceeded")
 	ErrUnexpected        = errors.New("unexpected error")
+	ErrValidation        = errors.New("validation error")
 )

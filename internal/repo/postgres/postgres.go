@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
 )
 
 const (

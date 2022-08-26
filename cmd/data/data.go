@@ -7,14 +7,18 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
 
+	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	apiDataPkg "gitlab.ozon.dev/iTukaev/homework/internal/api/data"
+	dataPkg "gitlab.ozon.dev/iTukaev/homework/internal/brokers/data"
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
+	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
 	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
@@ -44,7 +48,7 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 
 	go func() {
-		if err = runGRPCServer(ctx, config, logger); err != nil {
+		if err = start(ctx, config, logger); err != nil {
 			logger.Errorln("gRPC", err)
 		}
 		c <- os.Interrupt
@@ -53,7 +57,7 @@ func main() {
 	<-c
 }
 
-func runGRPCServer(ctx context.Context, config configPkg.Interface, logger *zap.SugaredLogger) (retErr error) {
+func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredLogger) (retErr error) {
 	var data repoPkg.Interface
 	if config.Local() {
 		workers := config.WorkersCount()
@@ -72,7 +76,29 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface, logger *zap.
 	}
 	user := userPkg.New(data, logger)
 
-	listener, err := net.Listen("tcp", config.RepoAddr())
+	stopCh := make(chan struct{}, 0)
+	go func() {
+		if err := runGRPCServer(ctx, config.GRPCAddr(), logger, user); err != nil {
+			retErr = errors.Wrap(err, "gRPC server")
+		}
+		close(stopCh)
+	}()
+	go func() {
+		if err := runService(ctx, config.Brokers(), logger, user); err != nil {
+			retErr = errors.Wrap(err, "consumer service")
+		}
+		close(stopCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-stopCh:
+	}
+	return retErr
+}
+
+func runGRPCServer(ctx context.Context, grpcSrv string, logger *zap.SugaredLogger, user userPkg.Interface) (retErr error) {
+	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln("Listener create:", err)
 	}
@@ -97,4 +123,34 @@ func runGRPCServer(ctx context.Context, config configPkg.Interface, logger *zap.
 	}
 	logger.Infoln("gRPC stopped")
 	return
+}
+
+func runService(ctx context.Context, brokers []string, logger *zap.SugaredLogger, user userPkg.Interface) error {
+	cfg := sarama.NewConfig()
+	cfg.Producer.Return.Successes = true
+	cfg.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	producer, err := sarama.NewSyncProducer(brokers, cfg)
+	if err != nil {
+		return errors.Wrap(err, "new SyncProducer")
+	}
+
+	income, err := sarama.NewConsumerGroup(brokers, consts.GroupData, cfg)
+	if err != nil {
+		return errors.Wrap(err, "new ConsumerGroup")
+	}
+
+	handler := dataPkg.NewHandler(ctx, user, logger, producer)
+
+	go func() {
+		for {
+			if err = income.Consume(ctx, []string{consts.TopicData}, handler); err != nil {
+				logger.Errorf("on consume: <%v>", err)
+				time.Sleep(time.Second * 5)
+			}
+		}
+	}()
+
+	<-ctx.Done()
+	return income.Close()
 }

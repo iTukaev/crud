@@ -40,10 +40,10 @@ services:
 #    build:
 #      context: .
 #      dockerfile: ./Dockerfile
-#    container_name: 'app-user-service'
+#    container_name: 'receiver-user-service'
 #    environment:
-#      PATH: /go/src/app
-#    command: app
+#      PATH: /go/src/receiver
+#    command: receiver
 #    restart: always
 #    network_mode: host
 #    volumes:

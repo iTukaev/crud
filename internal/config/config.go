@@ -11,4 +11,5 @@ type Interface interface {
 	Local() bool
 	WorkersCount() int
 	PGConfig() pgModels.Config
+	Brokers() []string
 }
