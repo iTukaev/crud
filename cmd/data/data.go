@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	otgrpc "github.com/opentracing-contrib/go-grpc"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -24,6 +26,7 @@ import (
 	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
 	postgresPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
@@ -76,9 +79,19 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 	}
 	user := userPkg.New(data, logger)
 
+	tracer, closer, err := jaegerPkg.New(config.JService(), config.JHost())
+	if err != nil {
+		logger.Errorf("Jaeger initialise err: %v", err)
+		return
+	}
+	defer func() {
+		_ = closer.Close()
+	}()
+	opentracing.SetGlobalTracer(tracer)
+
 	stopCh := make(chan struct{}, 0)
 	go func() {
-		if err := runGRPCServer(ctx, config.GRPCAddr(), logger, user); err != nil {
+		if err := runGRPCServer(ctx, user, tracer, config.RepoAddr(), logger); err != nil {
 			retErr = errors.Wrap(err, "gRPC server")
 		}
 		close(stopCh)
@@ -97,13 +110,16 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 	return retErr
 }
 
-func runGRPCServer(ctx context.Context, grpcSrv string, logger *zap.SugaredLogger, user userPkg.Interface) (retErr error) {
+func runGRPCServer(ctx context.Context, user userPkg.Interface, tracer opentracing.Tracer, grpcSrv string, logger *zap.SugaredLogger) (retErr error) {
 	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln("Listener create:", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(otgrpc.OpenTracingServerInterceptor(tracer)),
+		grpc.StreamInterceptor(otgrpc.OpenTracingStreamServerInterceptor(tracer)),
+	)
 	pb.RegisterUserServer(grpcServer, apiDataPkg.New(user, logger))
 
 	logger.Infoln("Start gRPC")

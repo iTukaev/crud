@@ -10,7 +10,6 @@ import (
 
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
-	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 )
 
 func main() {
@@ -23,38 +22,93 @@ func main() {
 	}
 
 	client := pb.NewUserClient(conn)
-
-	ctx := context.Background()
-	ctx = metadata.AppendToOutgoingContext(ctx, "custom", "hello")
-
-	_, err = client.UserCreate(ctx, &pb.UserCreateRequest{
-		User: &pbModels.User{
-			Name:     "IA",
-			Password: "123",
-			Email:    "123@123.ru",
-			FullName: "oslik",
-		},
-	})
-	if err != nil {
-		log.Println(err)
-	}
-	//response, err := client.UserAllList(ctx, &pb.UserAllListRequest{
-	//	Order: false,
-	//	Limit: 2,
-	//})
-	//if err != nil {
-	//	log.Fatalln(err)
-	//}
-	//for {
-	//	next, err := response.Recv()
-	//	if errors.Is(err, io.EOF) {
-	//		break
-	//	}
+	//{
+	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "123456789")
+	//
+	//	res, err := client.UserGet(ctx, &pb.UserGetRequest{Name: "Piter"})
 	//	if err != nil {
 	//		log.Println(err)
 	//	}
-	//	for i, user := range next.Users {
-	//		fmt.Println(i, user.String())
+	//	log.Println(res)
+	//}
+	//time.Sleep(1 * time.Second)
+	//{
+	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "987654321")
+	//	resCr, err := client.UserCreate(ctx, &pb.UserCreateRequest{
+	//		User: &pbModels.User{
+	//			Name:     "Timut",
+	//			Password: "pass",
+	//			Email:    "tm@il.ru",
+	//			FullName: "Tim Owner",
+	//		},
+	//	})
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//	log.Println(resCr)
+	//}
+	//time.Sleep(1 * time.Second)
+	//{
+	//	pass, email, full := "pass111", "tm@il.ru11", "Tim Owner"
+	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "000111000")
+	//	resCr, err := client.UserUpdate(ctx, &pb.UserUpdateRequest{
+	//		Name: "Timut",
+	//		Profile: &pbModels.Profile{
+	//			Password: &pass,
+	//			Email:    &email,
+	//			FullName: &full,
+	//		},
+	//	})
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//	log.Println(resCr)
+	//}
+	//time.Sleep(1 * time.Second)
+	{
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "222333222")
+		resCr, err := client.UserDelete(ctx, &pb.UserDeleteRequest{
+			Name: "Timut",
+		})
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(resCr)
+	}
+	//time.Sleep(1 * time.Second)
+	//{
+	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "222333222")
+	//	resCr, err := client.UserList(ctx, &pb.UserListRequest{
+	//		Order:  true,
+	//		Limit:  3,
+	//		Offset: 0,
+	//	})
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//	log.Println(resCr)
+	//}
+	//time.Sleep(1 * time.Second)
+	//{
+	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "444555666")
+	//	response, err := client.UserAllList(ctx, &pb.UserAllListRequest{
+	//		Order: false,
+	//		Limit: 2,
+	//	})
+	//	if err != nil {
+	//		log.Fatalln(err)
+	//	}
+	//	for {
+	//		next, err := response.Recv()
+	//		if errors.Is(err, io.EOF) {
+	//			break
+	//		}
+	//		if err != nil {
+	//			log.Println(err)
+	//		}
+	//		for i, user := range next.Users {
+	//			fmt.Println(i, user.String())
+	//		}
 	//	}
 	//}
 }

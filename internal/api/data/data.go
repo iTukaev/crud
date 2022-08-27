@@ -13,12 +13,13 @@ import (
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
 
 const (
 	contextTimeout = 5 * time.Second
 
-	undefinedMeta = "undefined"
+	dataService = "data"
 )
 
 func New(user userPkg.Interface, logger *zap.SugaredLogger) pb.UserServer {
@@ -35,14 +36,15 @@ type core struct {
 }
 
 func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
-	meta, ok := ctx.Value("meta").(string)
-	if !ok {
-		meta = undefinedMeta
-	}
-	c.logger.Debugln(meta, "user get:", in.GetName())
-
+	ctx, meta := helper.GetMetaFromContext(ctx)
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
+
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, dataService, stop)
 
 	user, err := c.user.Get(ctx, in.GetName())
 	if err != nil {
@@ -64,14 +66,17 @@ func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetR
 }
 
 func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
-	meta, ok := ctx.Value("meta").(string)
-	if !ok {
-		meta = undefinedMeta
-	}
-	c.logger.Debugln(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
-
+	ctx, meta := helper.GetMetaFromContext(ctx)
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
+
+	c.logger.Debugln(meta, "user get:", in.GetLimit(), in.GetOffset(), in.GetOrder())
+
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, dataService, stop)
 
 	users, err := c.user.List(ctx, in.GetOrder(), in.GetLimit(), in.GetOffset())
 	if err != nil {
@@ -88,15 +93,18 @@ func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserLi
 }
 
 func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllListServer) error {
-	meta, ok := stream.Context().Value("meta").(string)
-	if !ok {
-		meta = undefinedMeta
-	}
+	ctx, meta := helper.GetMetaFromContext(stream.Context())
 	c.logger.Debugln(meta, "all users list", in.GetOrder(), in.GetLimit())
+
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, dataService, stop)
 
 	offset := uint64(0)
 	for {
-		users, err := c.user.List(stream.Context(), in.GetOrder(), in.GetLimit(), offset)
+		users, err := c.user.List(ctx, in.GetOrder(), in.GetLimit(), offset)
 		if err != nil {
 			c.logger.Errorln(meta, "Get list", err)
 			return status.Error(codes.Internal, err.Error())

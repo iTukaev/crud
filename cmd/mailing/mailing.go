@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -15,6 +16,7 @@ import (
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
+	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
@@ -27,13 +29,23 @@ func main() {
 	if err != nil {
 		log.Fatalln("Config init error:", err)
 	}
-	logger.Infoln("Start validator")
+	logger.Infoln("Start mailing")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		logger.Infoln("Shutting down...")
 		cancel()
 	}()
+
+	tracer, closer, err := jaegerPkg.New(config.JService(), config.JHost())
+	if err != nil {
+		logger.Errorf("Jaeger initialise err: %v", err)
+		return
+	}
+	defer func() {
+		_ = closer.Close()
+	}()
+	opentracing.SetGlobalTracer(tracer)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

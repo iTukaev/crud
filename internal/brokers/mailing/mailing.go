@@ -11,6 +11,11 @@ import (
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
+)
+
+const (
+	mailingService = "mailing"
 )
 
 type sender interface {
@@ -31,24 +36,31 @@ type core struct {
 }
 
 func (c *core) sendSuccess(msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, mailingService)
+	defer span.Finish()
+
 	var user models.User
 	if err := json.Unmarshal(msg.Value, &user); err != nil {
 		return errors.Wrap(err, "unmarshal")
 	}
-	produceHeaders, meta := headers(msg.Headers)
 
 	if randError() == nil {
-		c.logger.Infof("[%s] result sended success [%s] [%s]", meta, msg.Key, msg.Value)
+		c.logger.Infof("result sended success [%s] [%s]", msg.Key, msg.Value)
 		return nil
 	}
-	_, _, err := c.producer.SendMessage(&sarama.ProducerMessage{
-		Topic:   consts.TopicMailing,
-		Key:     sarama.ByteEncoder(msg.Key),
-		Value:   sarama.ByteEncoder(msg.Value),
-		Headers: produceHeaders,
-	})
+
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicMailing,
+		Key:   sarama.ByteEncoder(msg.Key),
+		Value: sarama.ByteEncoder(msg.Value),
+	}
+	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
+		return err
+	}
+
+	_, _, err := c.producer.SendMessage(message)
 	if err != nil {
-		c.logger.Errorf("[%s] send: %v", meta, err)
+		c.logger.Errorf("send: %v", err)
 		return err
 	}
 
@@ -56,27 +68,32 @@ func (c *core) sendSuccess(msg *sarama.ConsumerMessage) error {
 }
 
 func (c *core) sendError(msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, mailingService)
+	defer span.Finish()
+
 	var user models.User
 	if err := json.Unmarshal(msg.Value, &user); err != nil {
 		return errors.Wrap(err, "message unmarshal")
 	}
-	produceHeaders, meta := headers(msg.Headers)
 
 	if randError() == nil {
-		c.logger.Infof("[%s] error sended success [%s] [%s]", meta, msg.Key, msg.Value)
+		c.logger.Infof("error sended success [%s] [%s]", msg.Key, msg.Value)
 		return nil
 	}
-	part, offset, err := c.producer.SendMessage(&sarama.ProducerMessage{
-		Topic:   consts.TopicError,
-		Key:     sarama.ByteEncoder(msg.Key),
-		Value:   sarama.ByteEncoder(msg.Value),
-		Headers: produceHeaders,
-	})
-	if err != nil {
-		c.logger.Errorf("[%s] send: %v", meta, err)
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicError,
+		Key:   sarama.ByteEncoder(msg.Key),
+		Value: sarama.ByteEncoder(msg.Value),
+	}
+	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
 		return err
 	}
-	c.logger.Debugf("[%s] part [ %d ] offset [ %d ]", meta, part, offset)
+
+	_, _, err := c.producer.SendMessage(message)
+	if err != nil {
+		c.logger.Errorf("send: %v", err)
+		return err
+	}
 
 	return nil
 }
@@ -88,16 +105,4 @@ func randError() error {
 		return errors.New("sending error")
 	}
 	return nil
-}
-
-func headers(headers []*sarama.RecordHeader) ([]sarama.RecordHeader, string) {
-	res := make([]sarama.RecordHeader, 0, len(headers))
-	var meta string
-	for _, h := range headers {
-		if string(h.Key) == "meta" {
-			meta = string(h.Value)
-		}
-		res = append(res, *h)
-	}
-	return res, meta
 }

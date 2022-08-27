@@ -31,6 +31,10 @@ func (config) GRPCAddr() string {
 	return viper.GetString("grpc")
 }
 
+func (config) GRPCDataAddr() string {
+	return viper.GetString("grpc_data")
+}
+
 func (config) HTTPAddr() string {
 	return viper.GetString("http")
 }
@@ -61,4 +65,12 @@ func (config) WorkersCount() int {
 
 func (config) Brokers() []string {
 	return viper.GetStringSlice("brokers")
+}
+
+func (config) JService() string {
+	return viper.GetString("jaeger.service")
+}
+
+func (config) JHost() string {
+	return viper.GetString("jaeger.host")
 }

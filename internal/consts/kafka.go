@@ -6,7 +6,7 @@ const (
 	TopicMailing  = "topic_mailing"
 	TopicError    = "topic_error"
 
-	GroupValidator = "group_validate"
-	GroupData      = "group_data"
-	GroupMailing   = "group_mailing"
+	GroupValidate = "group_validate"
+	GroupData     = "group_data"
+	GroupMailing  = "group_mailing"
 )

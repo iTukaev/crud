@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -15,6 +16,7 @@ import (
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
+	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
@@ -34,6 +36,16 @@ func main() {
 		logger.Infoln("Shutting down...")
 		cancel()
 	}()
+
+	tracer, closer, err := jaegerPkg.New(config.JService(), config.JHost())
+	if err != nil {
+		logger.Errorf("Jaeger initialise err: %v", err)
+		return
+	}
+	defer func() {
+		_ = closer.Close()
+	}()
+	opentracing.SetGlobalTracer(tracer)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -58,7 +70,7 @@ func runService(ctx context.Context, config configPkg.Interface, logger *zap.Sug
 		return errors.Wrap(err, "new SyncProducer")
 	}
 
-	income, err := sarama.NewConsumerGroup(config.Brokers(), consts.GroupValidator, cfg)
+	income, err := sarama.NewConsumerGroup(config.Brokers(), consts.GroupValidate, cfg)
 	if err != nil {
 		return errors.Wrap(err, "new ConsumerGroup")
 	}

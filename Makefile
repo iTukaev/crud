@@ -1,4 +1,4 @@
-.PHONY: receiver validator data client
+.PHONY: receiver validator data mailing client
 receiver: r_build
 	@./receiver
 r_build:
@@ -13,6 +13,11 @@ data: d_build
 	@./data
 d_build:
 	@go build -o data ./cmd/data/data.go
+
+mailing: m_build
+	@./mailing
+m_build:
+	@go build -o mailing ./cmd/mailing/mailing.go
 
 client:
 	@go run ./cmd/client/client.go

@@ -14,6 +14,7 @@ import (
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
 
 const (
@@ -26,6 +27,8 @@ const (
 	createdAtField = "created_at"
 
 	desc = " DESC"
+
+	repoService = "repo"
 )
 
 type PgxPool interface {
@@ -63,6 +66,12 @@ type repo struct {
 }
 
 func (r *repo) UserCreate(ctx context.Context, user models.User) error {
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, repoService, stop)
+
 	query, args, err := squirrel.Insert(usersTable).
 		Columns(nameField, passwordField, emailField, fullNameField, createdAtField).
 		Values(user.Name, user.Password, user.Email, user.FullName, user.CreatedAt).
@@ -81,6 +90,12 @@ func (r *repo) UserCreate(ctx context.Context, user models.User) error {
 }
 
 func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, repoService, stop)
+
 	query, args, err := squirrel.Update(usersTable).
 		Set(passwordField, user.Password).
 		Set(emailField, user.Email).
@@ -103,6 +118,12 @@ func (r *repo) UserUpdate(ctx context.Context, user models.User) error {
 }
 
 func (r *repo) UserDelete(ctx context.Context, name string) error {
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, repoService, stop)
+
 	query, args, err := squirrel.Delete(usersTable).
 		Where(squirrel.Eq{
 			nameField: name,
@@ -122,6 +143,12 @@ func (r *repo) UserDelete(ctx context.Context, name string) error {
 }
 
 func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, repoService, stop)
+
 	query, args, err := squirrel.Select(nameField, passwordField, emailField, fullNameField, createdAtField).
 		From(usersTable).
 		Where(squirrel.Eq{
@@ -148,6 +175,12 @@ func (r *repo) UserGet(ctx context.Context, name string) (models.User, error) {
 }
 
 func (r *repo) UserList(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error) {
+	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
+	go helper.StartNewSpan(ctx, repoService, stop)
+
 	var sort string
 	if order {
 		sort = desc

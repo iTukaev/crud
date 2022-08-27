@@ -11,6 +11,11 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
+)
+
+const (
+	validateService = "validate"
 )
 
 var (
@@ -36,79 +41,97 @@ type core struct {
 }
 
 func (c *core) userCreate(msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, validateService)
+	defer span.Finish()
+
 	var user models.User
 	if err := json.Unmarshal(msg.Value, &user); err != nil {
 		return errors.Wrap(err, "unmarshal")
 	}
-	produceHeaders, meta := headers(msg.Headers)
 
-	c.logger.Debugf("[%s] user [%s]", meta, user.String())
+	c.logger.Debugf("user [%s]", user.String())
 	if err := createValidator(user); err != nil {
 		return err
 	}
 
-	part, offset, err := c.producer.SendMessage(&sarama.ProducerMessage{
-		Topic:   consts.TopicData,
-		Key:     sarama.StringEncoder(consts.UserCreate),
-		Value:   sarama.ByteEncoder(msg.Value),
-		Headers: produceHeaders,
-	})
-	if err != nil {
-		c.logger.Errorf("[%s] send: %v", meta, err)
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicData,
+		Key:   sarama.StringEncoder(consts.UserCreate),
+		Value: sarama.ByteEncoder(msg.Value),
+	}
+	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
 		return err
 	}
-	c.logger.Debugf("[%s] part [ %d ] offset [ %d ]", meta, part, offset)
+
+	part, offset, err := c.producer.SendMessage(message)
+	if err != nil {
+		c.logger.Errorf("send: %v", err)
+		return err
+	}
+	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
 
 	return nil
 }
 
 func (c *core) userUpdate(msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, validateService)
+	defer span.Finish()
+
 	var user models.User
 	if err := json.Unmarshal(msg.Value, &user); err != nil {
 		return errors.Wrap(err, "message unmarshal")
 	}
-	produceHeaders, meta := headers(msg.Headers)
 
-	c.logger.Debugf("[%s] user [%s]", meta, user.String())
+	c.logger.Debugf("user [%s]", user.String())
 	if err := updateValidator(user); err != nil {
 		return errors.Wrap(err, "unmarshal")
 	}
 
-	part, offset, err := c.producer.SendMessage(&sarama.ProducerMessage{
-		Topic:   consts.TopicData,
-		Key:     sarama.StringEncoder(consts.UserUpdate),
-		Value:   sarama.ByteEncoder(msg.Value),
-		Headers: produceHeaders,
-	})
-	if err != nil {
-		c.logger.Errorf("[%s] send: %v", meta, err)
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicData,
+		Key:   sarama.StringEncoder(consts.UserUpdate),
+		Value: sarama.ByteEncoder(msg.Value),
+	}
+	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
 		return err
 	}
-	c.logger.Debugf("[%s] part [ %d ] offset [ %d ]", meta, part, offset)
+
+	part, offset, err := c.producer.SendMessage(message)
+	if err != nil {
+		c.logger.Errorf("send: %v", err)
+		return err
+	}
+	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
 
 	return nil
 }
 
 func (c *core) userDelete(msg *sarama.ConsumerMessage) error {
-	name := string(msg.Value)
-	produceHeaders, meta := headers(msg.Headers)
+	span := helper.GetSpanFromMessage(msg, validateService)
+	defer span.Finish()
 
-	c.logger.Debugf("[%s] name: [%s]", meta, name)
+	name := string(msg.Value)
+
+	c.logger.Debugf("name: [%s]", name)
 	if err := deleteValidator(name); err != nil {
 		return errors.Wrap(err, "unmarshal")
 	}
 
-	part, offset, err := c.producer.SendMessage(&sarama.ProducerMessage{
-		Topic:   consts.TopicData,
-		Key:     sarama.StringEncoder(consts.UserDelete),
-		Value:   sarama.ByteEncoder(msg.Value),
-		Headers: produceHeaders,
-	})
-	if err != nil {
-		c.logger.Errorf("[%s] send: %v", meta, err)
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicData,
+		Key:   sarama.StringEncoder(consts.UserDelete),
+		Value: sarama.ByteEncoder(msg.Value),
+	}
+	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
 		return err
 	}
-	c.logger.Debugf("[%s] part [ %d ] offset [ %d ]", meta, part, offset)
+
+	part, offset, err := c.producer.SendMessage(message)
+	if err != nil {
+		c.logger.Errorf("send: %v", err)
+		return err
+	}
+	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
 
 	return nil
 }
@@ -133,6 +156,15 @@ func updateValidator(user models.User) error {
 	if user.Name == "" {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [name] cannot be empty")
 	}
+	if user.Password == "" {
+		return errors.Wrap(errorsPkg.ErrValidation, "field: [password] cannot be empty")
+	}
+	if !email.MatchString(user.Email) {
+		return errors.Wrap(errorsPkg.ErrValidation, "field: [email] cannot be empty")
+	}
+	if user.FullName == "" {
+		return errors.Wrap(errorsPkg.ErrValidation, "field: [full_name] cannot be empty")
+	}
 	return nil
 }
 
@@ -141,16 +173,4 @@ func deleteValidator(name string) error {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [name] cannot be empty")
 	}
 	return nil
-}
-
-func headers(headers []*sarama.RecordHeader) ([]sarama.RecordHeader, string) {
-	res := make([]sarama.RecordHeader, 0, len(headers))
-	var meta string
-	for _, h := range headers {
-		if string(h.Key) == "meta" {
-			meta = string(h.Value)
-		}
-		res = append(res, *h)
-	}
-	return res, meta
 }

@@ -11,6 +11,8 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	otgrpc "github.com/opentracing-contrib/go-grpc"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -29,6 +31,7 @@ import (
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
@@ -50,11 +53,21 @@ func main() {
 		cancel()
 	}()
 
+	tracer, closer, err := jaegerPkg.New(config.JService(), config.JHost())
+	if err != nil {
+		logger.Errorf("Jaeger initialise err: %v", err)
+		return
+	}
+	defer func() {
+		_ = closer.Close()
+	}()
+	opentracing.SetGlobalTracer(tracer)
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	go func() {
-		if err = start(ctx, config, logger); err != nil {
+		if err = start(ctx, config, tracer, logger); err != nil {
 			logger.Errorln(err)
 			c <- os.Interrupt
 		}
@@ -65,8 +78,12 @@ func main() {
 	}
 }
 
-func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredLogger) (retErr error) {
-	conn, err := grpc.Dial(config.RepoAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+func start(ctx context.Context, config configPkg.Interface, tracer opentracing.Tracer, logger *zap.SugaredLogger) (retErr error) {
+	conn, err := grpc.Dial(config.RepoAddr(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
+		grpc.WithStreamInterceptor(otgrpc.OpenTracingStreamClientInterceptor(tracer)),
+	)
 	if err != nil {
 		return errors.Wrap(err, "gRPC client connection")
 	}

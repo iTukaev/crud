@@ -48,7 +48,7 @@ func (h *Handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama
 			}
 		case consts.UserDelete:
 			session.MarkMessage(msg, "delete")
-			if err := h.sender.userUpdate(msg); err != nil {
+			if err := h.sender.userDelete(msg); err != nil {
 				return errors.Wrap(err, "user delete")
 			}
 		default:
