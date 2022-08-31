@@ -9,8 +9,9 @@ import (
 	"github.com/pashagolub/pgxmock"
 	"github.com/stretchr/testify/assert"
 
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
 
 var (
@@ -53,7 +54,10 @@ func TestRepo_UserCreate(t *testing.T) {
 				WillReturnResult(pgxmock.NewResult("INSERT", 1)).
 				WillReturnError(c.expErr)
 
-			r := &repo{pool: mock}
+			r := &repo{
+				pool:   mock,
+				logger: loggerPkg.NewFatal(),
+			}
 			err = r.UserCreate(context.Background(), user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -90,7 +94,10 @@ func TestRepo_UserUpdate(t *testing.T) {
 				WillReturnResult(pgxmock.NewResult("UPDATE", 1)).
 				WillReturnError(c.expErr)
 
-			r := &repo{pool: mock}
+			r := &repo{
+				pool:   mock,
+				logger: loggerPkg.NewFatal(),
+			}
 			err = r.UserUpdate(context.Background(), user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -127,7 +134,10 @@ func TestRepo_UserDelete(t *testing.T) {
 				WillReturnResult(pgxmock.NewResult("DELETE", 1)).
 				WillReturnError(c.expErr)
 
-			r := &repo{pool: mock}
+			r := &repo{
+				pool:   mock,
+				logger: loggerPkg.NewFatal(),
+			}
 			err = r.UserDelete(context.Background(), user.Name)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -175,7 +185,10 @@ func TestRepo_UserGet(t *testing.T) {
 				WillReturnError(c.err).
 				RowsWillBeClosed()
 
-			r := &repo{pool: mock}
+			r := &repo{
+				pool:   mock,
+				logger: loggerPkg.NewFatal(),
+			}
 			_, err = r.UserGet(context.Background(), user.Name)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -220,7 +233,10 @@ func TestRepo_UserList(t *testing.T) {
 				WillReturnRows(rows).
 				WillReturnError(c.err)
 
-			r := &repo{pool: mock}
+			r := &repo{
+				pool:   mock,
+				logger: loggerPkg.NewFatal(),
+			}
 			_, err = r.UserList(context.Background(), order, limit, offset)
 			assert.ErrorIs(t, err, c.expErr)
 		})

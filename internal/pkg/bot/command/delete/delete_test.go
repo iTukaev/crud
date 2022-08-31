@@ -10,8 +10,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/customerrors"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 	apiMockPkg "gitlab.ozon.dev/iTukaev/homework/pkg/mock"
 )
 
@@ -59,7 +60,7 @@ func TestAddCommand_Process(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockClient := apiMockPkg.NewMockUserClient(ctl)
-			deleteCommand := New(mockClient)
+			deleteCommand := New(mockClient, loggerPkg.NewFatal())
 
 			gomock.InOrder(
 				mockClient.EXPECT().UserDelete(ctx, &pb.UserDeleteRequest{
@@ -79,7 +80,7 @@ func TestAddCommand_Name(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockClient := apiMockPkg.NewMockUserClient(ctl)
-		deleteCommand := New(mockClient)
+		deleteCommand := New(mockClient, loggerPkg.NewFatal())
 
 		name := deleteCommand.Name()
 
@@ -93,7 +94,7 @@ func TestAddCommand_Description(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockClient := apiMockPkg.NewMockUserClient(ctl)
-		deleteCommand := New(mockClient)
+		deleteCommand := New(mockClient, loggerPkg.NewFatal())
 
 		description := deleteCommand.Description()
 

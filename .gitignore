@@ -2,8 +2,11 @@
 config.yaml
 
 # builded application file
-app
+receiver
+validator
+data
 
-# DB directories
+# data directories
 postgresql
 pgbouncer
+kafka_data
