@@ -10,6 +10,7 @@ import (
 	"os/signal"
 
 	"github.com/Shopify/sarama"
+	grpcOpentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
@@ -31,6 +32,7 @@ import (
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	grpcPkg "gitlab.ozon.dev/iTukaev/homework/pkg/grpc"
 	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
@@ -177,7 +179,13 @@ func runGRPCServer(ctx context.Context, server pb.UserServer, grpcSrv string, lo
 		return errors.Wrap(err, "listener")
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			grpcPkg.MetricsUnaryInterceptor,
+			grpcOpentracing.UnaryServerInterceptor(),
+		),
+		grpc.StreamInterceptor(grpcPkg.MetricsStreamInterceptor),
+	)
 	pb.RegisterUserServer(grpcServer, server)
 
 	logger.Infoln("Start gRPC")

@@ -55,14 +55,13 @@ func (c *command) Process(ctx context.Context, args string) string {
 		return "internal error"
 	}
 
-	result := ""
-	for i, u := range list.Users {
-		result += u.String()
-		if i != len(list.Users)-1 {
-			result += "\n"
-		}
-	}
-	return result
+	//for i, u := range list.Users {
+	//	result += u.String()
+	//	if i != len(list.Users)-1 {
+	//		result += "\n"
+	//	}
+	//}
+	return list.GetUid()
 }
 
 func (*command) Name() string {

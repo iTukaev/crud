@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -10,6 +11,7 @@ import (
 
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 )
 
 func main() {
@@ -22,49 +24,49 @@ func main() {
 	}
 
 	client := pb.NewUserClient(conn)
-	//{
-	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "123456789")
-	//
-	//	res, err := client.UserGet(ctx, &pb.UserGetRequest{Name: "Piter"})
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//	log.Println(res)
-	//}
-	//time.Sleep(1 * time.Second)
-	//{
-	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "987654321")
-	//	resCr, err := client.UserCreate(ctx, &pb.UserCreateRequest{
-	//		User: &pbModels.User{
-	//			Name:     "Timut",
-	//			Password: "pass",
-	//			Email:    "tm@il.ru",
-	//			FullName: "Tim Owner",
-	//		},
-	//	})
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//	log.Println(resCr)
-	//}
-	//time.Sleep(1 * time.Second)
-	//{
-	//	pass, email, full := "pass111", "tm@il.ru11", "Tim Owner"
-	//	ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "000111000")
-	//	resCr, err := client.UserUpdate(ctx, &pb.UserUpdateRequest{
-	//		Name: "Timut",
-	//		Profile: &pbModels.Profile{
-	//			Password: &pass,
-	//			Email:    &email,
-	//			FullName: &full,
-	//		},
-	//	})
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//	log.Println(resCr)
-	//}
-	//time.Sleep(1 * time.Second)
+	{
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "123456789")
+
+		res, err := client.UserGet(ctx, &pb.UserGetRequest{Name: "Piter"})
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(res)
+	}
+	time.Sleep(1 * time.Second)
+	{
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "987654321")
+		resCr, err := client.UserCreate(ctx, &pb.UserCreateRequest{
+			User: &pbModels.User{
+				Name:     "Timut",
+				Password: "pass",
+				Email:    "tm@il.ru",
+				FullName: "Tim Owner",
+			},
+		})
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(resCr)
+	}
+	time.Sleep(1 * time.Second)
+	{
+		pass, email, full := "pass111", "tm@il.ru11", "Tim Owner"
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "000111000")
+		resCr, err := client.UserUpdate(ctx, &pb.UserUpdateRequest{
+			Name: "Timut",
+			Profile: &pbModels.Profile{
+				Password: &pass,
+				Email:    &email,
+				FullName: &full,
+			},
+		})
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(resCr)
+	}
+	time.Sleep(1 * time.Second)
 	{
 		ctx := metadata.AppendToOutgoingContext(context.Background(), "meta", "222333222")
 		resCr, err := client.UserDelete(ctx, &pb.UserDeleteRequest{

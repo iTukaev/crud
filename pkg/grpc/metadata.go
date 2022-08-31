@@ -1,4 +1,4 @@
-package helper
+package grpc
 
 import (
 	"context"
@@ -12,7 +12,7 @@ const (
 	undefinedMeta = "undefined"
 )
 
-func GetMetaFromContext(ctx context.Context) (context.Context, string) {
+func GetMetaFromContext(ctx context.Context) string {
 	var data []string
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
@@ -25,5 +25,5 @@ func GetMetaFromContext(ctx context.Context) (context.Context, string) {
 		meta = fmt.Sprintf("%s_%d", undefinedMeta, time.Now().UTC().Unix())
 	}
 
-	return metadata.NewOutgoingContext(ctx, md), meta
+	return meta
 }
