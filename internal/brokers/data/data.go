@@ -3,13 +3,14 @@ package data
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/Shopify/sarama"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
+	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
@@ -20,14 +21,15 @@ const (
 )
 
 type sender interface {
-	userCreate(msg *sarama.ConsumerMessage) error
-	userUpdate(msg *sarama.ConsumerMessage) error
-	userDelete(msg *sarama.ConsumerMessage) error
+	userCreate(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userDelete(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userGet(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userList(ctx context.Context, msg *sarama.ConsumerMessage) error
 }
 
-func newSender(ctx context.Context, user userPkg.Interface, logger *zap.SugaredLogger, producer sarama.SyncProducer) sender {
+func newSender(user userPkg.Interface, logger *zap.SugaredLogger, producer sarama.SyncProducer) sender {
 	return &core{
-		ctx:      ctx,
 		user:     user,
 		producer: producer,
 		logger:   logger,
@@ -35,14 +37,14 @@ func newSender(ctx context.Context, user userPkg.Interface, logger *zap.SugaredL
 }
 
 type core struct {
-	ctx      context.Context
 	user     userPkg.Interface
 	producer sarama.SyncProducer
 	logger   *zap.SugaredLogger
 }
 
-func (c *core) userCreate(msg *sarama.ConsumerMessage) error {
+func (c *core) userCreate(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, brokerDataService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	var user models.User
@@ -55,41 +57,22 @@ func (c *core) userCreate(msg *sarama.ConsumerMessage) error {
 	message := &sarama.ProducerMessage{
 		Topic: consts.TopicMailing,
 		Key:   sarama.StringEncoder(consts.UserCreate),
-		Value: sarama.ByteEncoder(fmt.Sprintf("user [%s] created", user.Name)),
 	}
 
-	if err := c.user.Create(c.ctx, user); err != nil {
-		c.logger.Errorf("user create: %v", err)
-
-		message.Topic = consts.TopicError
-		message.Value = sarama.ByteEncoder(fmt.Sprintf("user [%s] creating error: %v", user.Name, err))
-		if errInj := helper.InjectSpanIntoMessage(span, message); errInj != nil {
-			return errInj
-		}
-
-		_, _, errSend := c.producer.SendMessage(message)
-		if errSend != nil {
-			c.logger.Errorf("user create error send: %v", err)
+	if err := c.user.Create(ctx, user); err != nil {
+		if errors.Is(err, errorsPkg.ErrUserAlreadyExists) {
+			c.logger.Errorf("user create: %v", err)
+			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
 
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
-	}
-
-	part, offset, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
-	}
-	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
-
-	return nil
+	return c.sendMessageWithCtx(ctx, message)
 }
 
-func (c *core) userUpdate(msg *sarama.ConsumerMessage) error {
+func (c *core) userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, brokerDataService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	var user models.User
@@ -102,79 +85,125 @@ func (c *core) userUpdate(msg *sarama.ConsumerMessage) error {
 	message := &sarama.ProducerMessage{
 		Topic: consts.TopicMailing,
 		Key:   sarama.StringEncoder(consts.UserUpdate),
-		Value: sarama.ByteEncoder(fmt.Sprintf("user [%s] updated", user.Name)),
 	}
 
-	if err := c.user.Update(c.ctx, user); err != nil {
-		c.logger.Errorf("user create: %v", err)
-
-		message.Topic = consts.TopicError
-		message.Value = sarama.ByteEncoder(fmt.Sprintf("user [%s] updating error: %v", user.Name, err))
-		if errInj := helper.InjectSpanIntoMessage(span, message); errInj != nil {
-			return errInj
-		}
-
-		_, _, errSend := c.producer.SendMessage(message)
-		if errSend != nil {
-			c.logger.Errorf("user create error send: %v", err)
+	if err := c.user.Update(ctx, user); err != nil {
+		if errors.Is(err, errorsPkg.ErrUserNotFound) {
+			c.logger.Errorf("user update: %v", err)
+			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
 
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
-	}
-
-	part, offset, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
-	}
-	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
-
-	return nil
+	return c.sendMessageWithCtx(ctx, message)
 }
 
-func (c *core) userDelete(msg *sarama.ConsumerMessage) error {
+func (c *core) userDelete(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, brokerDataService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	name := string(msg.Value)
 
-	c.logger.Debugf("[%s] name: [%s]", name)
+	c.logger.Debugf("name: [%s]", name)
 
 	message := &sarama.ProducerMessage{
 		Topic: consts.TopicMailing,
 		Key:   sarama.StringEncoder(consts.UserDelete),
-		Value: sarama.ByteEncoder(fmt.Sprintf("user [%s] removed", name)),
 	}
 
-	if err := c.user.Delete(c.ctx, name); err != nil {
-		c.logger.Errorf("[%s] user create: %v", err)
-
-		message.Topic = consts.TopicError
-		message.Value = sarama.ByteEncoder(fmt.Sprintf("user [%s] removing error: %v", name, err))
-		if errInj := helper.InjectSpanIntoMessage(span, message); errInj != nil {
-			return errInj
-		}
-
-		_, _, errSend := c.producer.SendMessage(message)
-		if errSend != nil {
-			c.logger.Errorf("user create error send: %v", err)
+	if err := c.user.Delete(ctx, name); err != nil {
+		if errors.Is(err, errorsPkg.ErrUserNotFound) {
+			c.logger.Errorf("user delete: %v", err)
+			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
 
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
+	return c.sendMessageWithCtx(ctx, message)
+}
+
+func (c *core) userGet(ctx context.Context, msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, brokerDataService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
+	defer span.Finish()
+
+	name := string(msg.Value)
+
+	c.logger.Debugf("name: [%s]", name)
+
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicMailing,
+		Key:   sarama.StringEncoder(consts.UserGet),
 	}
 
-	part, offset, err := c.producer.SendMessage(message)
+	user, err := c.user.Get(ctx, name)
 	if err != nil {
-		c.logger.Errorf("send: %v", err)
+		if errors.Is(err, errorsPkg.ErrUserNotFound) {
+			c.logger.Errorf("user delete: %v", err)
+			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
+		}
 		return err
 	}
-	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
 
-	return nil
+	data, err := json.Marshal(user)
+	if err != nil {
+		return errors.Wrap(err, "marshal user")
+	}
+	message.Value = sarama.ByteEncoder(data)
+
+	return c.sendMessageWithCtx(ctx, message)
+}
+
+func (c *core) userList(ctx context.Context, msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, brokerDataService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
+	defer span.Finish()
+
+	params := models.NewUserListParams()
+	if err := json.Unmarshal(msg.Value, params); err != nil {
+		return errors.Wrap(err, "unmarshal list parameters")
+	}
+
+	c.logger.Debugf("parameters: [%d %d %v]", params.Limit, params.Offset, params.Order)
+
+	list, err := c.user.List(ctx, params.Order, params.Limit, params.Offset)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(list)
+	if err != nil {
+		return errors.Wrap(err, "marshal user")
+	}
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicMailing,
+		Key:   sarama.StringEncoder(consts.UserList),
+		Value: sarama.ByteEncoder(data),
+	}
+
+	return c.sendMessageWithCtx(ctx, message)
+}
+
+func (c *core) sendValidationErrorWithCtx(
+	ctx context.Context,
+	message *sarama.ProducerMessage,
+	description string,
+) error {
+	if err := helper.InjectHeaders(ctx, message); err != nil {
+		return err
+	}
+	message.Topic = consts.TopicError
+	message.Value = sarama.StringEncoder(description)
+
+	_, _, err := c.producer.SendMessage(message)
+	return err
+}
+
+func (c *core) sendMessageWithCtx(ctx context.Context, message *sarama.ProducerMessage) error {
+	if err := helper.InjectHeaders(ctx, message); err != nil {
+		return err
+	}
+	_, _, err := c.producer.SendMessage(message)
+	return err
 }

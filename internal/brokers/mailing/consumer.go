@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
 
 func NewHandler(logger *zap.SugaredLogger, producer sarama.SyncProducer) *Handler {
@@ -30,17 +31,25 @@ func (h *Handler) Cleanup(sarama.ConsumerGroupSession) error {
 
 func (h *Handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		switch msg.Topic {
-		case consts.TopicMailing:
-			session.MarkMessage(msg, "success")
-			if err := h.sender.sendSuccess(msg); err != nil {
-				return errors.Wrap(err, "send message")
-			}
-		case consts.TopicError:
-			session.MarkMessage(msg, "error")
-			if err := h.sender.sendError(msg); err != nil {
-				return errors.Wrap(err, "send message")
-			}
+		return h.handleMessage(session, msg)
+	}
+	return nil
+}
+
+func (h *Handler) handleMessage(session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
+	uid, pub := helper.ExtractUidPubFromMessage(msg)
+	ctx := helper.InjectUidPubToCtx(session.Context(), uid, pub)
+
+	switch msg.Topic {
+	case consts.TopicMailing:
+		session.MarkMessage(msg, "success")
+		if err := h.sender.sendSuccess(ctx, msg); err != nil {
+			return errors.Wrap(err, "send message")
+		}
+	case consts.TopicError:
+		session.MarkMessage(msg, "error")
+		if err := h.sender.sendError(ctx, msg); err != nil {
+			return errors.Wrap(err, "send message")
 		}
 	}
 	return nil

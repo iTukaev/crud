@@ -4,6 +4,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -11,6 +12,10 @@ import (
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
+)
+
+const (
+	ctxTimeout = 5 * time.Second
 )
 
 type Interface interface {
@@ -35,6 +40,8 @@ type core struct {
 
 func (c *core) Create(ctx context.Context, user models.User) error {
 	c.logger.Debugln("Create", user)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
+	defer cancel()
 
 	if _, err := c.data.UserGet(ctx, user.Name); err == nil {
 		return errorsPkg.ErrUserAlreadyExists
@@ -50,6 +57,8 @@ func (c *core) Create(ctx context.Context, user models.User) error {
 
 func (c *core) Update(ctx context.Context, user models.User) error {
 	c.logger.Debugln("Update", user)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
+	defer cancel()
 
 	if _, err := c.data.UserGet(ctx, user.Name); err != nil {
 		return err
@@ -63,6 +72,8 @@ func (c *core) Update(ctx context.Context, user models.User) error {
 
 func (c *core) Delete(ctx context.Context, name string) error {
 	c.logger.Debugln("Delete", name)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
+	defer cancel()
 
 	if _, err := c.data.UserGet(ctx, name); err != nil {
 		return err
@@ -76,12 +87,16 @@ func (c *core) Delete(ctx context.Context, name string) error {
 
 func (c *core) Get(ctx context.Context, name string) (models.User, error) {
 	c.logger.Debugln("Get", name)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
+	defer cancel()
 
 	return c.data.UserGet(ctx, name)
 }
 
 func (c *core) List(ctx context.Context, order bool, limit, offset uint64) ([]models.User, error) {
 	c.logger.Debugln("List", order, limit, offset)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
+	defer cancel()
 
 	return c.data.UserList(ctx, order, limit, offset)
 }

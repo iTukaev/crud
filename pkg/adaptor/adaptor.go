@@ -15,8 +15,8 @@ func ToUserPbModel(u coreModels.User) *pbModels.User {
 	}
 }
 
-func ToUserCoreModel(u *pbModels.User) coreModels.User {
-	return coreModels.User{
+func ToUserCoreModel(u *pbModels.User) *coreModels.User {
+	return &coreModels.User{
 		Name:      u.Name,
 		Password:  u.Password,
 		Email:     u.Email,

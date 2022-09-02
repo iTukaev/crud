@@ -78,6 +78,18 @@
             "schema": {
               "$ref": "#/definitions/modelsUser"
             }
+          },
+          {
+            "name": "pubSub",
+            "description": "pubSub is a flag to show method of response waiting",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "pub",
+              "cache"
+            ],
+            "default": "pub"
           }
         ],
         "tags": [
@@ -113,10 +125,14 @@
           },
           {
             "name": "pubSub",
-            "description": "pubSub is a flag to show method of response waiting",
             "in": "query",
             "required": false,
-            "type": "boolean"
+            "type": "string",
+            "enum": [
+              "pub",
+              "cache"
+            ],
+            "default": "pub"
           }
         ],
         "tags": [
@@ -147,6 +163,17 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "pubSub",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "pub",
+              "cache"
+            ],
+            "default": "pub"
           }
         ],
         "tags": [
@@ -185,6 +212,17 @@
             "schema": {
               "$ref": "#/definitions/modelsProfile"
             }
+          },
+          {
+            "name": "pubSub",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "pub",
+              "cache"
+            ],
+            "default": "pub"
           }
         ],
         "tags": [
@@ -239,7 +277,12 @@
             "name": "pubSub",
             "in": "query",
             "required": false,
-            "type": "boolean"
+            "type": "string",
+            "enum": [
+              "pub",
+              "cache"
+            ],
+            "default": "pub"
           }
         ],
         "tags": [
@@ -269,10 +312,20 @@
       }
     },
     "apiUserCreateResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        }
+      }
     },
     "apiUserDeleteResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        }
+      }
     },
     "apiUserGetResponse": {
       "type": "object",
@@ -291,7 +344,20 @@
       }
     },
     "apiUserUpdateResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
+    "apiWait": {
+      "type": "string",
+      "enum": [
+        "pub",
+        "cache"
+      ],
+      "default": "pub"
     },
     "modelsProfile": {
       "type": "object",

@@ -19,3 +19,9 @@ func (u *User) String() string {
 	return fmt.Sprintf("name: [%s], full_name: [%s], email: [%s], created_at: [%v]",
 		u.Name, u.FullName, u.Email, time.Unix(u.CreatedAt, 0))
 }
+
+type UserListParams struct {
+	Limit  uint64 `json:"limit"`
+	Offset uint64 `json:"offset"`
+	Order  bool   `json:"order"`
+}

@@ -8,6 +8,7 @@ import (
 
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	pgModels "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres/models"
+	redisPkg "gitlab.ozon.dev/iTukaev/homework/pkg/redis"
 )
 
 type config struct{}
@@ -53,6 +54,14 @@ func (config) PGConfig() pgModels.Config {
 		log.Fatalf("Postgres config unmarshal error: %v\n", err)
 	}
 	return pg
+}
+
+func (config) RedisConfig() redisPkg.Config {
+	var cfg redisPkg.Config
+	if err := viper.UnmarshalKey("redis", &cfg); err != nil {
+		log.Fatalf("Postgres config unmarshal error: %v\n", err)
+	}
+	return cfg
 }
 
 func (config) Local() bool {

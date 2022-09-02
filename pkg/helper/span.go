@@ -22,8 +22,14 @@ func StartNewSpan(ctx context.Context, name string, stop chan struct{}) {
 	<-stop
 }
 
-func InjectSpanIntoMessage(span opentracing.Span, msg *sarama.ProducerMessage) error {
-	headers := make(map[string]string)
+func InjectHeaders(ctx context.Context, msg *sarama.ProducerMessage) error {
+	span := opentracing.SpanFromContext(ctx)
+	uid, pub := ExtractUidPubFromCtx(ctx)
+	headers := map[string]string{
+		uidKey: uid,
+		pubKey: pub,
+	}
+
 	if err := opentracing.GlobalTracer().Inject(
 		span.Context(),
 		opentracing.TextMap,

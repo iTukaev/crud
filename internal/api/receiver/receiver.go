@@ -7,16 +7,16 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/opentracing/opentracing-go"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
+	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
-	pbModels "gitlab.ozon.dev/iTukaev/homework/pkg/api/models"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/grpc"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
@@ -38,16 +38,20 @@ type core struct {
 
 func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.UserCreateResponse, error) {
 	meta := grpc.GetMetaFromContext(ctx)
+	uid := uuid.New().String()
+	ctx = helper.InjectUidPubToCtx(ctx, uid, in.GetPubSub().String())
+
 	c.logger.Debugf("[%s] user create: [%s]", meta, in.User.String())
 
-	in.User.CreatedAt = time.Now().Unix()
-	msg, err := json.Marshal(adaptor.ToUserCoreModel(in.User))
+	user := adaptor.ToUserCoreModel(in.User).CreatedAtSet(time.Now().Unix())
+
+	msg, err := json.Marshal(user)
 	if err != nil {
 		c.logger.Errorf("[%s] marshal err: %v", meta, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if _, _, err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+	if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
 		Topic: consts.TopicValidate,
 		Key:   sarama.StringEncoder(consts.UserCreate),
 		Value: sarama.ByteEncoder(msg),
@@ -56,25 +60,31 @@ func (c *core) UserCreate(ctx context.Context, in *pb.UserCreateRequest) (*pb.Us
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return new(pb.UserCreateResponse), nil
+	return &pb.UserCreateResponse{
+		Uid: uid,
+	}, nil
 }
 
 func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.UserUpdateResponse, error) {
 	meta := grpc.GetMetaFromContext(ctx)
+	uid := uuid.New().String()
+	ctx = helper.InjectUidPubToCtx(ctx, uid, in.GetPubSub().String())
+
 	c.logger.Debugf("[%s] user create: [%s %s]", meta, in.GetName(), in.Profile.String())
 
-	msg, err := json.Marshal(adaptor.ToUserCoreModel(&pbModels.User{
-		Name:     in.GetName(),
-		Password: in.Profile.GetPassword(),
-		Email:    in.Profile.GetEmail(),
-		FullName: in.Profile.GetFullName(),
-	}))
+	user := models.NewUser().
+		NameSet(in.GetName()).
+		PasswordSet(in.Profile.GetPassword()).
+		EmailSet(in.Profile.GetEmail()).
+		FullNameSet(in.Profile.GetFullName())
+
+	msg, err := json.Marshal(user)
 	if err != nil {
 		c.logger.Errorf("[%s] marshal err: %v", meta, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if _, _, err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+	if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
 		Topic: consts.TopicValidate,
 		Key:   sarama.StringEncoder(consts.UserUpdate),
 		Value: sarama.ByteEncoder(msg),
@@ -83,14 +93,19 @@ func (c *core) UserUpdate(ctx context.Context, in *pb.UserUpdateRequest) (*pb.Us
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return new(pb.UserUpdateResponse), nil
+	return &pb.UserUpdateResponse{
+		Uid: uid,
+	}, nil
 }
 
 func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
 	meta := grpc.GetMetaFromContext(ctx)
+	uid := uuid.New().String()
+	ctx = helper.InjectUidPubToCtx(ctx, uid, in.GetPubSub().String())
+
 	c.logger.Debugf("[%s] user delete: [%s]", meta, in.GetName())
 
-	if _, _, err := c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+	if err := c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
 		Topic: consts.TopicValidate,
 		Key:   sarama.StringEncoder(consts.UserDelete),
 		Value: sarama.ByteEncoder(in.GetName()),
@@ -99,60 +114,74 @@ func (c *core) UserDelete(ctx context.Context, in *pb.UserDeleteRequest) (*pb.Us
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return new(pb.UserDeleteResponse), nil
+	return &pb.UserDeleteResponse{
+		Uid: uid,
+	}, nil
 }
 
 func (c *core) UserGet(ctx context.Context, in *pb.UserGetRequest) (*pb.UserGetResponse, error) {
 	meta := grpc.GetMetaFromContext(ctx)
+	uid := uuid.New().String()
+	ctx = helper.InjectUidPubToCtx(ctx, uid, in.GetPubSub().String())
+
 	c.logger.Debugf("[%s] user get: [%s]", meta, in.GetName())
 
-	if in.GetName() == "" {
-		c.logger.Errorf("[%s] empty [name]", meta)
-		return nil, status.Error(codes.InvalidArgument, errors.New("field: [name] cannot be empty").Error())
+	if err := c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+		Topic: consts.TopicValidate,
+		Key:   sarama.StringEncoder(consts.UserGet),
+		Value: sarama.ByteEncoder(in.GetName()),
+	}); err != nil {
+		c.logger.Errorf("[%s] send message err: %v", meta, err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	resp, err := c.user.UserGet(ctx, in)
-	if err != nil {
-		c.logger.Errorf("[%s] user get: %v", meta, err)
-		return nil, err
-	}
-
-	return resp, nil
+	return &pb.UserGetResponse{
+		Uid: uid,
+	}, nil
 }
 
 func (c *core) UserList(ctx context.Context, in *pb.UserListRequest) (*pb.UserListResponse, error) {
 	meta := grpc.GetMetaFromContext(ctx)
+	uid := uuid.New().String()
+	ctx = helper.InjectUidPubToCtx(ctx, uid, in.GetPubSub().String())
+
 	c.logger.Debugf("[%s] user list: [%v %v %v]", meta, in.GetLimit(), in.GetOffset(), in.GetOrder())
 
-	span := opentracing.StartSpan("receiver_user_list_" + meta)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	defer span.Finish()
+	params := models.NewUserListParams().
+		LimitSet(in.GetLimit()).
+		OffsetSet(in.GetOffset()).
+		OrderSet(in.GetOrder())
 
-	resp, err := c.user.UserList(ctx, in)
+	msg, err := json.Marshal(params)
 	if err != nil {
-		c.logger.Errorf("[%s] user list: %v", meta, err)
-		span.SetTag("error", true)
-		return nil, err
+		c.logger.Errorf("[%s] marshal err: %v", meta, err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return resp, nil
+	if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+		Topic: consts.TopicData,
+		Key:   sarama.StringEncoder(consts.UserList),
+		Value: sarama.ByteEncoder(msg),
+	}); err != nil {
+		c.logger.Errorf("[%s] send message err: %v", meta, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.UserListResponse{
+		Uid: uid,
+	}, nil
 }
 
 func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllListServer) error {
 	meta := grpc.GetMetaFromContext(stream.Context())
 	c.logger.Debugf("[%s] all users list: [%v %v]", meta, in.GetOrder(), in.GetLimit())
 
-	span := opentracing.StartSpan("receiver_user_all_list_" + meta)
-	ctx := opentracing.ContextWithSpan(stream.Context(), span)
-	defer span.Finish()
-
-	dataStream, err := c.user.UserAllList(ctx, &pb.UserAllListRequest{
+	dataStream, err := c.user.UserAllList(stream.Context(), &pb.UserAllListRequest{
 		Order: in.GetOrder(),
 		Limit: in.GetLimit(),
 	})
 	if err != nil {
 		c.logger.Errorf("[%s] all user list: stream: %v", meta, err)
-		span.SetTag("error", true)
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -163,24 +192,19 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 		}
 		if err != nil {
 			c.logger.Errorf("[%s] all users list: next chunk: %v", meta, err)
-			span.SetTag("error", true)
 			return status.Error(codes.Internal, err.Error())
 		}
 		if err = stream.Send(next); err != nil {
 			c.logger.Errorf("[%s] all users list: send chunk: %v", meta, err)
-			span.SetTag("error", true)
 			return status.Error(codes.Internal, err.Error())
 		}
 	}
 }
 
-func (c *core) sendMessageWithCtx(
-	ctx context.Context,
-	message *sarama.ProducerMessage,
-) (partition int32, offset int64, err error) {
-	span := opentracing.SpanFromContext(ctx)
-	if err = helper.InjectSpanIntoMessage(span, message); err != nil {
-		return 0, 0, err
+func (c *core) sendMessageWithCtx(ctx context.Context, message *sarama.ProducerMessage) error {
+	if err := helper.InjectHeaders(ctx, message); err != nil {
+		return err
 	}
-	return c.producer.SendMessage(message)
+	_, _, err := c.producer.SendMessage(message)
+	return err
 }

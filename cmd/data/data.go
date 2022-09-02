@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
+	grpcOpentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -91,7 +91,7 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 
 	stopCh := make(chan struct{}, 0)
 	go func() {
-		if err := runGRPCServer(ctx, user, tracer, config.RepoAddr(), logger); err != nil {
+		if err := runGRPCServer(ctx, user, config.RepoAddr(), logger); err != nil {
 			retErr = errors.Wrap(err, "gRPC server")
 		}
 		close(stopCh)
@@ -110,15 +110,15 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 	return retErr
 }
 
-func runGRPCServer(ctx context.Context, user userPkg.Interface, tracer opentracing.Tracer, grpcSrv string, logger *zap.SugaredLogger) (retErr error) {
+func runGRPCServer(ctx context.Context, user userPkg.Interface, grpcSrv string, logger *zap.SugaredLogger) (retErr error) {
 	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln("Listener create:", err)
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(otgrpc.OpenTracingServerInterceptor(tracer)),
-		grpc.StreamInterceptor(otgrpc.OpenTracingStreamServerInterceptor(tracer)),
+		grpc.UnaryInterceptor(grpcOpentracing.UnaryServerInterceptor()),
+		grpc.StreamInterceptor(grpcOpentracing.StreamServerInterceptor()),
 	)
 	pb.RegisterUserServer(grpcServer, apiDataPkg.New(user, logger))
 
@@ -156,7 +156,7 @@ func runService(ctx context.Context, brokers []string, logger *zap.SugaredLogger
 		return errors.Wrap(err, "new ConsumerGroup")
 	}
 
-	handler := dataPkg.NewHandler(ctx, user, logger, producer)
+	handler := dataPkg.NewHandler(user, logger, producer)
 
 	go func() {
 		for {

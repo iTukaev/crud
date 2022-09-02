@@ -77,29 +77,38 @@ service User {
 // UserCreate endpoint messages
 message UserCreateRequest {
   api.models.User user = 1;
+  // pubSub is a flag to show method of response waiting
+  Wait pubSub          = 2;
 }
-message UserCreateResponse{}
+message UserCreateResponse{
+  string uid = 1;
+}
 
 
 // UserUpdate endpoint messages
 message UserUpdateRequest {
   string name                = 1;
   api.models.Profile profile = 2;
+  Wait pubSub                = 3;
 }
-message UserUpdateResponse{}
+message UserUpdateResponse{
+  string uid = 1;
+}
 
 
 // UserDelete endpoint messages
 message UserDeleteRequest {
   string name = 1;
+  Wait pubSub = 2;
 }
-message UserDeleteResponse{}
+message UserDeleteResponse{
+  string uid = 1;
+}
 
 // UserGet endpoint messages
 message UserGetRequest {
   string name = 1;
-  // pubSub is a flag to show method of response waiting
-  bool pubSub = 2;
+  Wait pubSub = 2;
 }
 message UserGetResponse{
   string uid = 1;
@@ -116,7 +125,7 @@ message UserListRequest {
   // Page number.
   uint64 offset = 3;
 
-  bool pubSub = 4;
+  Wait pubSub = 4;
 }
 message UserListResponse{
   string uid = 1;
@@ -140,6 +149,11 @@ message UserAllListRequest {
 }
 message UserAllListResponse{
   repeated api.models.User users = 1;
+}
+
+enum Wait {
+  pub   = 0;
+  cache = 1;
 }
 
 //OpenAPIv2 base options
