@@ -45,7 +45,7 @@ type core struct {
 
 func (c *core) userCreate(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
-	ctx = opentracing.ContextWithSpan(context.Background(), span)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	user := models.NewUser()
@@ -69,7 +69,7 @@ func (c *core) userCreate(ctx context.Context, msg *sarama.ConsumerMessage) erro
 
 func (c *core) userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
-	ctx = opentracing.ContextWithSpan(context.Background(), span)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	user := models.NewUser()
@@ -93,7 +93,7 @@ func (c *core) userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) erro
 
 func (c *core) userDelete(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
-	ctx = opentracing.ContextWithSpan(context.Background(), span)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	name := string(msg.Value)
@@ -112,7 +112,7 @@ func (c *core) userDelete(ctx context.Context, msg *sarama.ConsumerMessage) erro
 
 func (c *core) userGet(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
-	ctx = opentracing.ContextWithSpan(context.Background(), span)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	name := string(msg.Value)

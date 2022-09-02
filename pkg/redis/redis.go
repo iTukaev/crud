@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 
-	"github.com/go-redis/redis/v9"
+	"github.com/go-redis/redis/v8"
 )
 
 type Config struct {
@@ -15,10 +15,8 @@ type Config struct {
 func New(ctx context.Context, cfg Config) (*redis.Client, error) {
 	rds := redis.NewClient(&redis.Options{
 		Addr:     cfg.Host,
-		Username: cfg.User,
 		Password: cfg.Password,
 		DB:       0,
-		PoolSize: 10,
 	})
 
 	if err := rds.Ping(ctx).Err(); err != nil {

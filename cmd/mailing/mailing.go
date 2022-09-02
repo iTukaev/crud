@@ -18,6 +18,7 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
 	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
+	redisPkg "gitlab.ozon.dev/iTukaev/homework/pkg/redis"
 )
 
 func main() {
@@ -75,7 +76,12 @@ func runService(ctx context.Context, config configPkg.Interface, logger *zap.Sug
 		return errors.Wrap(err, "new ConsumerGroup")
 	}
 
-	handler := mailing.NewHandler(logger, producer)
+	client, err := redisPkg.New(ctx, config.RedisConfig())
+	if err != nil {
+		return errors.Wrap(err, "new redis client")
+	}
+
+	handler := mailing.NewHandler(logger, producer, client)
 
 	go func() {
 		for {

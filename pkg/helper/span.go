@@ -2,7 +2,6 @@ package helper
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Shopify/sarama"
 	"github.com/opentracing/opentracing-go"
@@ -55,9 +54,9 @@ func GetSpanFromMessage(msg *sarama.ConsumerMessage, operationName string) opent
 
 	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
 	if err != nil {
-		fmt.Println(err)
 		return opentracing.StartSpan(operationName)
 	}
+
 	return opentracing.StartSpan(
 		operationName,
 		opentracing.FollowsFrom(spanContext),

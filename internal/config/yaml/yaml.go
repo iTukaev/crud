@@ -32,16 +32,16 @@ func (config) GRPCAddr() string {
 	return viper.GetString("grpc")
 }
 
-func (config) GRPCDataAddr() string {
-	return viper.GetString("grpc_data")
-}
-
 func (config) HTTPAddr() string {
 	return viper.GetString("http")
 }
 
-func (config) RepoAddr() string {
-	return viper.GetString("repo")
+func (config) GRPCDataAddr() string {
+	return viper.GetString("grpc_data")
+}
+
+func (config) HTTPDataAddr() string {
+	return viper.GetString("http_data")
 }
 
 func (config) LogLevel() string {

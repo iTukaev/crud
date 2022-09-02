@@ -1,57 +1,17 @@
 version: "3.9"
 
 services:
-
-  postgres:
-    image: postgres:14.4
-    ports:
-      - "127.0.0.1:5432:5432"
-    container_name: postgresql-user-service
+  server:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: 'receiver-user-service'
     environment:
-      POSTGRES_USER: "user"
-      POSTGRES_PASSWORD: "password"
-      POSTGRES_DB: "candy_shop"
+      PATH: /go/src/receiver
+    command: receiver
+    restart: always
     volumes:
-      - "~/postgresql/data:/var/lib/postgresql/data"
-      - "./postgres.conf:/etc/postgresql/postgresql.conf"
-    command:
-      - "postgres"
-      - "-c"
-      - "config_file=/etc/postgresql/postgresql.conf"
-    networks:
-      - pg
-
-  pgbouncer:
-    depends_on:
-      - postgres
-    image: edoburu/pgbouncer:1.17.0
+      - $PWD/config.yaml:/config.yaml
     ports:
-      - "127.0.0.1:6432:6432"
-    container_name: pgbouncer-user-service
-    volumes:
-      - "./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini"
-      - "./userlist.txt:/etc/pgbouncer/userlist.txt"
-    networks:
-      - pg
-
-#  server:
-#    depends_on:
-#      - postgres
-#    build:
-#      context: .
-#      dockerfile: ./Dockerfile
-#    container_name: 'receiver-user-service'
-#    environment:
-#      PATH: /go/src/receiver
-#    command: receiver
-#    restart: always
-#    network_mode: host
-#    volumes:
-#      - $PWD/config.yaml:/config.yaml
-#    ports:
-#      - '9000:9000'
-#      - '9001:9001'
-
-networks:
-  pg:
-    driver: bridge
+      - '9000:9000'
+      - '9002:9002'

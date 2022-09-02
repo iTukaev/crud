@@ -201,6 +201,10 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 	}
 }
 
+func (c *core) Data(ctx context.Context, in *pb.DataRequest) (*pb.DataResponse, error) {
+	return c.user.Data(ctx, in)
+}
+
 func (c *core) sendMessageWithCtx(ctx context.Context, message *sarama.ProducerMessage) error {
 	if err := helper.InjectHeaders(ctx, message); err != nil {
 		return err

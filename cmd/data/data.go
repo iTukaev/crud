@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -21,6 +22,7 @@ import (
 	configPkg "gitlab.ozon.dev/iTukaev/homework/internal/config"
 	yamlPkg "gitlab.ozon.dev/iTukaev/homework/internal/config/yaml"
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
+	"gitlab.ozon.dev/iTukaev/homework/internal/counter"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	repoPkg "gitlab.ozon.dev/iTukaev/homework/internal/repo"
 	localCachePkg "gitlab.ozon.dev/iTukaev/homework/internal/repo/local"
@@ -28,6 +30,7 @@ import (
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
+	redisPkg "gitlab.ozon.dev/iTukaev/homework/pkg/redis"
 )
 
 func main() {
@@ -65,7 +68,7 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 	if config.Local() {
 		workers := config.WorkersCount()
 		if workers == 0 {
-			workers = runtime.NumCPU()
+			workers = 10
 		}
 		data = localCachePkg.New(workers, logger)
 	} else {
@@ -77,7 +80,13 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 		}
 		data = postgresPkg.New(pool, logger)
 	}
-	user := userPkg.New(data, logger)
+
+	client, err := redisPkg.New(ctx, config.RedisConfig())
+	if err != nil {
+		return errors.Wrap(err, "new redis client")
+	}
+
+	user := userPkg.New(data, logger, client)
 
 	tracer, closer, err := jaegerPkg.New(config.JService(), config.JHost())
 	if err != nil {
@@ -89,15 +98,23 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 	}()
 	opentracing.SetGlobalTracer(tracer)
 
+	server := apiDataPkg.New(user, logger)
+
 	stopCh := make(chan struct{}, 0)
 	go func() {
-		if err := runGRPCServer(ctx, user, config.RepoAddr(), logger); err != nil {
+		if err = runGRPCServer(ctx, server, config.GRPCDataAddr(), logger); err != nil {
 			retErr = errors.Wrap(err, "gRPC server")
 		}
 		close(stopCh)
 	}()
 	go func() {
-		if err := runService(ctx, config.Brokers(), logger, user); err != nil {
+		if err = runHTTPServer(ctx, config.HTTPDataAddr(), logger); err != nil {
+			retErr = errors.Wrap(err, "HTTP server")
+		}
+		close(stopCh)
+	}()
+	go func() {
+		if err = runService(ctx, config.Brokers(), logger, user); err != nil {
 			retErr = errors.Wrap(err, "consumer service")
 		}
 		close(stopCh)
@@ -110,7 +127,7 @@ func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredL
 	return retErr
 }
 
-func runGRPCServer(ctx context.Context, user userPkg.Interface, grpcSrv string, logger *zap.SugaredLogger) (retErr error) {
+func runGRPCServer(ctx context.Context, server pb.UserServer, grpcSrv string, logger *zap.SugaredLogger) (retErr error) {
 	listener, err := net.Listen("tcp", grpcSrv)
 	if err != nil {
 		log.Fatalln("Listener create:", err)
@@ -120,7 +137,7 @@ func runGRPCServer(ctx context.Context, user userPkg.Interface, grpcSrv string, 
 		grpc.UnaryInterceptor(grpcOpentracing.UnaryServerInterceptor()),
 		grpc.StreamInterceptor(grpcOpentracing.StreamServerInterceptor()),
 	)
-	pb.RegisterUserServer(grpcServer, apiDataPkg.New(user, logger))
+	pb.RegisterUserServer(grpcServer, server)
 
 	logger.Infoln("Start gRPC")
 
@@ -169,4 +186,37 @@ func runService(ctx context.Context, brokers []string, logger *zap.SugaredLogger
 
 	<-ctx.Done()
 	return income.Close()
+}
+
+func runHTTPServer(ctx context.Context, httpSrv string, logger *zap.SugaredLogger) (retErr error) {
+	mux := http.NewServeMux()
+	mux.Handle("/counters", expvar.Handler())
+	expvar.Publish("Hit cache", counter.Hit)
+	expvar.Publish("Miss cache", counter.Miss)
+
+	srv := http.Server{
+		Addr:    httpSrv,
+		Handler: mux,
+	}
+	logger.Infoln("Start HTTP gateway")
+	stopCh := make(chan struct{}, 0)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			retErr = errors.Wrap(err, "ListenAndServe")
+		}
+		close(stopCh)
+	}()
+
+	defer func() {
+
+	}()
+	select {
+	case <-stopCh:
+	case <-ctx.Done():
+		if err := srv.Close(); err != nil {
+			logger.Errorln("HTTP server close error:", err)
+		}
+	}
+	logger.Infoln("HTTP gateway stopped")
+	return nil
 }

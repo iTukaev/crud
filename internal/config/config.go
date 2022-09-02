@@ -23,10 +23,10 @@ type Transport interface {
 	GRPCAddr() string
 	GRPCDataAddr() string
 	HTTPAddr() string
+	HTTPDataAddr() string
 }
 
 type Data interface {
-	RepoAddr() string
 	PGConfig() pgModels.Config
 	Local() bool
 	WorkersCount() int

@@ -62,7 +62,7 @@ func (c *core) userCreate(ctx context.Context, msg *sarama.ConsumerMessage) erro
 	if err := c.user.Create(ctx, user); err != nil {
 		if errors.Is(err, errorsPkg.ErrUserAlreadyExists) {
 			c.logger.Errorf("user create: %v", err)
-			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
+			return c.sendErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
@@ -90,7 +90,7 @@ func (c *core) userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) erro
 	if err := c.user.Update(ctx, user); err != nil {
 		if errors.Is(err, errorsPkg.ErrUserNotFound) {
 			c.logger.Errorf("user update: %v", err)
-			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
+			return c.sendErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
@@ -115,7 +115,7 @@ func (c *core) userDelete(ctx context.Context, msg *sarama.ConsumerMessage) erro
 	if err := c.user.Delete(ctx, name); err != nil {
 		if errors.Is(err, errorsPkg.ErrUserNotFound) {
 			c.logger.Errorf("user delete: %v", err)
-			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
+			return c.sendErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
@@ -140,8 +140,8 @@ func (c *core) userGet(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	user, err := c.user.Get(ctx, name)
 	if err != nil {
 		if errors.Is(err, errorsPkg.ErrUserNotFound) {
-			c.logger.Errorf("user delete: %v", err)
-			return c.sendValidationErrorWithCtx(ctx, message, err.Error())
+			c.logger.Errorf("user get: %v", err)
+			return c.sendErrorWithCtx(ctx, message, err.Error())
 		}
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *core) userList(ctx context.Context, msg *sarama.ConsumerMessage) error 
 	return c.sendMessageWithCtx(ctx, message)
 }
 
-func (c *core) sendValidationErrorWithCtx(
+func (c *core) sendErrorWithCtx(
 	ctx context.Context,
 	message *sarama.ProducerMessage,
 	description string,

@@ -1,9 +1,14 @@
 package data
 
 import (
+	"context"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
@@ -48,4 +53,17 @@ func (c *core) UserAllList(in *pb.UserAllListRequest, stream pb.User_UserAllList
 		}
 		offset++
 	}
+}
+
+func (c *core) Data(ctx context.Context, in *pb.DataRequest) (*pb.DataResponse, error) {
+	data, err := c.user.Data(ctx, in.GetUid())
+	if errors.Is(err, redis.Nil) {
+		return nil, status.Error(codes.NotFound, "key is incorrect or data in not ready yet")
+	}
+
+	return &pb.DataResponse{
+		Body: &anypb.Any{
+			Value: data,
+		},
+	}, nil
 }

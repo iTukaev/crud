@@ -2,6 +2,7 @@ package mailing
 
 import (
 	"github.com/Shopify/sarama"
+	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -9,10 +10,10 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
 
-func NewHandler(logger *zap.SugaredLogger, producer sarama.SyncProducer) *Handler {
+func NewHandler(logger *zap.SugaredLogger, producer sarama.SyncProducer, client *redis.Client) *Handler {
 	return &Handler{
 		logger: logger,
-		sender: newSender(logger, producer),
+		sender: newSender(logger, producer, client),
 	}
 }
 
