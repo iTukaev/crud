@@ -2,8 +2,10 @@ package counter
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 type core struct {
@@ -11,11 +13,18 @@ type core struct {
 	data map[string]uint64
 }
 
+type simple struct {
+	data uint64
+}
+
 var (
 	Request  *core
 	Response *core
 	Success  *core
 	Errors   *core
+
+	Hit  *simple
+	Miss *simple
 )
 
 func init() {
@@ -30,6 +39,9 @@ func init() {
 
 	Errors = new(core)
 	Errors.data = make(map[string]uint64)
+
+	Hit = new(simple)
+	Miss = new(simple)
 }
 
 func (c *core) Inc(param string) {
@@ -48,4 +60,13 @@ func (c *core) String() string {
 		data = append(data, fmt.Sprintf("[%s] = %d", key, val))
 	}
 	return strings.Join(data, " | ")
+}
+
+func (s *simple) Inc() {
+	atomic.AddUint64(&s.data, 1)
+}
+
+func (s *simple) String() string {
+	res := atomic.LoadUint64(&s.data)
+	return strconv.FormatUint(res, 10)
 }

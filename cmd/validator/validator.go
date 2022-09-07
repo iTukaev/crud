@@ -80,7 +80,7 @@ func runService(ctx context.Context, config configPkg.Interface, logger *zap.Sug
 	go func() {
 		for {
 			if err = income.Consume(ctx, []string{consts.TopicValidate}, handler); err != nil {
-				logger.Errorf("on consume: <%v>", err)
+				logger.Errorf("on consume: %v", err)
 				time.Sleep(time.Second * 5)
 			}
 		}

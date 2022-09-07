@@ -49,6 +49,21 @@ func (mr *MockInterfaceMockRecorder) Create(ctx, user interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockInterface)(nil).Create), ctx, user)
 }
 
+// Data mocks base method.
+func (m *MockInterface) Data(ctx context.Context, uid string) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Data", ctx, uid)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Data indicates an expected call of Data.
+func (mr *MockInterfaceMockRecorder) Data(ctx, uid interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Data", reflect.TypeOf((*MockInterface)(nil).Data), ctx, uid)
+}
+
 // Delete mocks base method.
 func (m *MockInterface) Delete(ctx context.Context, name string) error {
 	m.ctrl.T.Helper()

@@ -1,8 +1,6 @@
 package data
 
 import (
-	"context"
-
 	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -10,12 +8,13 @@ import (
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
 	errorsPkg "gitlab.ozon.dev/iTukaev/homework/internal/customerrors"
 	userPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
 
-func NewHandler(ctx context.Context, user userPkg.Interface, logger *zap.SugaredLogger, producer sarama.SyncProducer) *Handler {
+func NewHandler(user userPkg.Interface, logger *zap.SugaredLogger, producer sarama.SyncProducer) *Handler {
 	return &Handler{
 		logger: logger,
-		sender: newSender(ctx, user, logger, producer),
+		sender: newSender(user, logger, producer),
 	}
 }
 
@@ -34,27 +33,44 @@ func (h *Handler) Cleanup(sarama.ConsumerGroupSession) error {
 
 func (h *Handler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		key := string(msg.Key)
-		switch key {
-		case consts.UserCreate:
-			session.MarkMessage(msg, "create")
-			if err := h.sender.userCreate(msg); err != nil {
-				return errors.Wrap(err, "user create")
-			}
-		case consts.UserUpdate:
-			session.MarkMessage(msg, "update")
-			if err := h.sender.userUpdate(msg); err != nil {
-				return errors.Wrap(err, "user update")
-			}
-		case consts.UserDelete:
-			session.MarkMessage(msg, "delete")
-			if err := h.sender.userDelete(msg); err != nil {
-				return errors.Wrap(err, "user delete")
-			}
-		default:
-			session.MarkMessage(msg, "invalid_key")
-			return errors.Wrap(errorsPkg.ErrValidation, "invalid message key")
+		return h.handleMessage(session, msg)
+	}
+	return nil
+}
+
+func (h *Handler) handleMessage(session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
+	uid, pub := helper.ExtractUidPubFromMessage(msg)
+	ctx := helper.InjectUidPubToCtx(session.Context(), uid, pub)
+
+	switch string(msg.Key) {
+	case consts.UserCreate:
+		if err := h.sender.userCreate(ctx, msg); err != nil {
+			return errors.Wrap(err, "user create")
 		}
+		session.MarkMessage(msg, "")
+	case consts.UserUpdate:
+		if err := h.sender.userUpdate(ctx, msg); err != nil {
+			return errors.Wrap(err, "user update")
+		}
+		session.MarkMessage(msg, "")
+	case consts.UserDelete:
+		if err := h.sender.userDelete(ctx, msg); err != nil {
+			return errors.Wrap(err, "user delete")
+		}
+		session.MarkMessage(msg, "")
+	case consts.UserGet:
+		if err := h.sender.userGet(ctx, msg); err != nil {
+			return errors.Wrap(err, "user get")
+		}
+		session.MarkMessage(msg, "")
+	case consts.UserList:
+		if err := h.sender.userList(ctx, msg); err != nil {
+			return errors.Wrap(err, "user list")
+		}
+		session.MarkMessage(msg, "")
+	default:
+		session.MarkMessage(msg, "invalid_key")
+		return errors.Wrap(errorsPkg.ErrValidation, "invalid message key")
 	}
 	return nil
 }

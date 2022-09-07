@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "models/user.proto";
 import "google/api/field_behavior.proto";
+import "google/protobuf/any.proto";
 
 service User {
 
@@ -57,6 +58,15 @@ service User {
     };
   }
 
+  // Get users list
+  //
+  // Returns all users from DB
+  rpc Data(DataRequest) returns (DataResponse) {
+    option (google.api.http) = {
+      get: "/v1/data"
+    };
+  }
+
   // Get all users
   //
   // Returns all users from DB
@@ -67,34 +77,41 @@ service User {
 // UserCreate endpoint messages
 message UserCreateRequest {
   api.models.User user = 1;
+  // pubSub is a flag to show method of response waiting
+  Wait pubSub          = 2;
 }
 message UserCreateResponse{
-  api.models.User user = 1;
+  string uid = 1;
 }
 
 
 // UserUpdate endpoint messages
 message UserUpdateRequest {
-  string name                = 1 [(google.api.field_behavior) = REQUIRED];
-  api.models.Profile profile = 2 [(google.api.field_behavior) = REQUIRED];
+  string name                = 1;
+  api.models.Profile profile = 2;
+  Wait pubSub                = 3;
 }
 message UserUpdateResponse{
-  api.models.User user = 1;
+  string uid = 1;
 }
 
 
 // UserDelete endpoint messages
 message UserDeleteRequest {
-  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 1;
+  Wait pubSub = 2;
 }
-message UserDeleteResponse{}
+message UserDeleteResponse{
+  string uid = 1;
+}
 
 // UserGet endpoint messages
 message UserGetRequest {
-  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 1;
+  Wait pubSub = 2;
 }
 message UserGetResponse{
-  api.models.User user = 1;
+  string uid = 1;
 }
 
 // UserList endpoint messages
@@ -107,9 +124,19 @@ message UserListRequest {
 
   // Page number.
   uint64 offset = 3;
+
+  Wait pubSub = 4;
 }
 message UserListResponse{
-  repeated api.models.User users = 1;
+  string uid = 1;
+}
+
+// UserList endpoint messages
+message DataRequest {
+  string uid = 1;
+}
+message DataResponse{
+  google.protobuf.Any Body = 2;
 }
 
 // UserAllList endpoint messages
@@ -122,6 +149,11 @@ message UserAllListRequest {
 }
 message UserAllListResponse{
   repeated api.models.User users = 1;
+}
+
+enum Wait {
+  pub   = 0;
+  cache = 1;
 }
 
 //OpenAPIv2 base options

@@ -10,6 +10,7 @@ import (
 	"os/signal"
 
 	"github.com/Shopify/sarama"
+	grpcOpentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
@@ -31,6 +32,7 @@ import (
 	cmdListPkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/list"
 	cmdUpdatePkg "gitlab.ozon.dev/iTukaev/homework/internal/pkg/bot/command/update"
 	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
+	grpcPkg "gitlab.ozon.dev/iTukaev/homework/pkg/grpc"
 	jaegerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/jaeger"
 	loggerPkg "gitlab.ozon.dev/iTukaev/homework/pkg/logger"
 )
@@ -53,21 +55,11 @@ func main() {
 		cancel()
 	}()
 
-	tracer, closer, err := jaegerPkg.New(config.JService(), config.JHost())
-	if err != nil {
-		logger.Errorf("Jaeger initialise err: %v", err)
-		return
-	}
-	defer func() {
-		_ = closer.Close()
-	}()
-	opentracing.SetGlobalTracer(tracer)
-
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	go func() {
-		if err = start(ctx, config, tracer, logger); err != nil {
+		if err = start(ctx, config, logger); err != nil {
 			logger.Errorln(err)
 			c <- os.Interrupt
 		}
@@ -78,8 +70,18 @@ func main() {
 	}
 }
 
-func start(ctx context.Context, config configPkg.Interface, tracer opentracing.Tracer, logger *zap.SugaredLogger) (retErr error) {
-	conn, err := grpc.Dial(config.RepoAddr(),
+func start(ctx context.Context, config configPkg.Interface, logger *zap.SugaredLogger) (retErr error) {
+	tracer, cancel, err := jaegerPkg.New(config.JService(), config.JHost())
+	if err != nil {
+		logger.Errorf("Jaeger initialise err: %v", err)
+		return
+	}
+	defer func() {
+		_ = cancel.Close()
+	}()
+	opentracing.SetGlobalTracer(tracer)
+
+	conn, err := grpc.Dial(config.GRPCDataAddr(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 		grpc.WithStreamInterceptor(otgrpc.OpenTracingStreamClientInterceptor(tracer)),
@@ -89,7 +91,6 @@ func start(ctx context.Context, config configPkg.Interface, tracer opentracing.T
 	}
 
 	client := pb.NewUserClient(conn)
-	stopCh := make(chan struct{}, 0)
 
 	cfg := sarama.NewConfig()
 	cfg.Producer.Return.Successes = true
@@ -97,8 +98,10 @@ func start(ctx context.Context, config configPkg.Interface, tracer opentracing.T
 	if err != nil {
 		return errors.Wrap(err, "new SyncProducer")
 	}
+
 	server := apiReceiverPkg.New(client, logger, producer)
 
+	stopCh := make(chan struct{}, 0)
 	go func() {
 		if err = runGRPCServer(ctx, server, config.GRPCAddr(), logger); err != nil {
 			retErr = errors.Wrap(err, "gRPC server")
@@ -177,7 +180,13 @@ func runGRPCServer(ctx context.Context, server pb.UserServer, grpcSrv string, lo
 		return errors.Wrap(err, "listener")
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			grpcPkg.MetricsUnaryInterceptor,
+			grpcOpentracing.UnaryServerInterceptor(),
+		),
+		grpc.StreamInterceptor(grpcPkg.MetricsStreamInterceptor),
+	)
 	pb.RegisterUserServer(grpcServer, server)
 
 	logger.Infoln("Start gRPC")

@@ -1,10 +1,12 @@
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"regexp"
 
 	"github.com/Shopify/sarama"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -23,9 +25,10 @@ var (
 )
 
 type sender interface {
-	userCreate(msg *sarama.ConsumerMessage) error
-	userUpdate(msg *sarama.ConsumerMessage) error
-	userDelete(msg *sarama.ConsumerMessage) error
+	userCreate(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userDelete(ctx context.Context, msg *sarama.ConsumerMessage) error
+	userGet(ctx context.Context, msg *sarama.ConsumerMessage) error
 }
 
 func newSender(logger *zap.SugaredLogger, producer sarama.SyncProducer) sender {
@@ -40,103 +43,93 @@ type core struct {
 	logger   *zap.SugaredLogger
 }
 
-func (c *core) userCreate(msg *sarama.ConsumerMessage) error {
+func (c *core) userCreate(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	var user models.User
+	user := models.NewUser()
 	if err := json.Unmarshal(msg.Value, &user); err != nil {
 		return errors.Wrap(err, "unmarshal")
 	}
 
 	c.logger.Debugf("user [%s]", user.String())
-	if err := createValidator(user); err != nil {
-		return err
-	}
 
 	message := &sarama.ProducerMessage{
 		Topic: consts.TopicData,
 		Key:   sarama.StringEncoder(consts.UserCreate),
 		Value: sarama.ByteEncoder(msg.Value),
 	}
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
+	if err := createValidator(user); err != nil {
+		return c.sendValidationErrorWithCtx(ctx, message, err.Error())
 	}
 
-	part, offset, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
-	}
-	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
-
-	return nil
+	return c.sendMessageWithCtx(ctx, message)
 }
 
-func (c *core) userUpdate(msg *sarama.ConsumerMessage) error {
+func (c *core) userUpdate(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
-	var user models.User
+	user := models.NewUser()
 	if err := json.Unmarshal(msg.Value, &user); err != nil {
 		return errors.Wrap(err, "message unmarshal")
 	}
 
 	c.logger.Debugf("user [%s]", user.String())
-	if err := updateValidator(user); err != nil {
-		return errors.Wrap(err, "unmarshal")
-	}
 
 	message := &sarama.ProducerMessage{
 		Topic: consts.TopicData,
 		Key:   sarama.StringEncoder(consts.UserUpdate),
 		Value: sarama.ByteEncoder(msg.Value),
 	}
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
+	if err := updateValidator(user); err != nil {
+		return c.sendValidationErrorWithCtx(ctx, message, err.Error())
 	}
 
-	part, offset, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
-	}
-	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
-
-	return nil
+	return c.sendMessageWithCtx(ctx, message)
 }
 
-func (c *core) userDelete(msg *sarama.ConsumerMessage) error {
+func (c *core) userDelete(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, validateService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
 	defer span.Finish()
 
 	name := string(msg.Value)
-
-	c.logger.Debugf("name: [%s]", name)
-	if err := deleteValidator(name); err != nil {
-		return errors.Wrap(err, "unmarshal")
-	}
 
 	message := &sarama.ProducerMessage{
 		Topic: consts.TopicData,
 		Key:   sarama.StringEncoder(consts.UserDelete),
 		Value: sarama.ByteEncoder(msg.Value),
 	}
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
+	if err := deleteValidator(name); err != nil {
+		return c.sendValidationErrorWithCtx(ctx, message, err.Error())
 	}
 
-	part, offset, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
-	}
-	c.logger.Debugf("part [ %d ] offset [ %d ]", part, offset)
-
-	return nil
+	return c.sendMessageWithCtx(ctx, message)
 }
 
-func createValidator(user models.User) error {
+func (c *core) userGet(ctx context.Context, msg *sarama.ConsumerMessage) error {
+	span := helper.GetSpanFromMessage(msg, validateService)
+	ctx = opentracing.ContextWithSpan(ctx, span)
+	defer span.Finish()
+
+	name := string(msg.Value)
+
+	message := &sarama.ProducerMessage{
+		Topic: consts.TopicData,
+		Key:   sarama.StringEncoder(consts.UserGet),
+		Value: sarama.ByteEncoder(msg.Value),
+	}
+	if err := getValidator(name); err != nil {
+		return c.sendValidationErrorWithCtx(ctx, message, err.Error())
+	}
+
+	return c.sendMessageWithCtx(ctx, message)
+}
+
+func createValidator(user *models.User) error {
 	if user.Name == "" {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [name] cannot be empty")
 	}
@@ -144,7 +137,7 @@ func createValidator(user models.User) error {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [password] cannot be empty")
 	}
 	if !email.MatchString(user.Email) {
-		return errors.Wrap(errorsPkg.ErrValidation, "field: [email] cannot be empty")
+		return errors.Wrap(errorsPkg.ErrValidation, "field: [email] has invalid format")
 	}
 	if user.FullName == "" {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [full_name] cannot be empty")
@@ -152,7 +145,7 @@ func createValidator(user models.User) error {
 	return nil
 }
 
-func updateValidator(user models.User) error {
+func updateValidator(user *models.User) error {
 	if user.Name == "" {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [name] cannot be empty")
 	}
@@ -160,7 +153,7 @@ func updateValidator(user models.User) error {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [password] cannot be empty")
 	}
 	if !email.MatchString(user.Email) {
-		return errors.Wrap(errorsPkg.ErrValidation, "field: [email] cannot be empty")
+		return errors.Wrap(errorsPkg.ErrValidation, "field: [email] has invalid format")
 	}
 	if user.FullName == "" {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [full_name] cannot be empty")
@@ -173,4 +166,34 @@ func deleteValidator(name string) error {
 		return errors.Wrap(errorsPkg.ErrValidation, "field: [name] cannot be empty")
 	}
 	return nil
+}
+
+func getValidator(name string) error {
+	if name == "" {
+		return errors.Wrap(errorsPkg.ErrValidation, "field: [name] cannot be empty")
+	}
+	return nil
+}
+
+func (c *core) sendValidationErrorWithCtx(
+	ctx context.Context,
+	message *sarama.ProducerMessage,
+	description string,
+) error {
+	if err := helper.InjectHeaders(ctx, message); err != nil {
+		return err
+	}
+	message.Topic = consts.TopicError
+	message.Value = sarama.StringEncoder(description)
+
+	_, _, err := c.producer.SendMessage(message)
+	return err
+}
+
+func (c *core) sendMessageWithCtx(ctx context.Context, message *sarama.ProducerMessage) error {
+	if err := helper.InjectHeaders(ctx, message); err != nil {
+		return err
+	}
+	_, _, err := c.producer.SendMessage(message)
+	return err
 }

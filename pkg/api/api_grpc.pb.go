@@ -42,6 +42,10 @@ type UserClient interface {
 	//
 	// Returns all users from DB
 	UserList(ctx context.Context, in *UserListRequest, opts ...grpc.CallOption) (*UserListResponse, error)
+	// Get users list
+	//
+	// Returns all users from DB
+	Data(ctx context.Context, in *DataRequest, opts ...grpc.CallOption) (*DataResponse, error)
 	// Get all users
 	//
 	// Returns all users from DB
@@ -95,6 +99,15 @@ func (c *userClient) UserGet(ctx context.Context, in *UserGetRequest, opts ...gr
 func (c *userClient) UserList(ctx context.Context, in *UserListRequest, opts ...grpc.CallOption) (*UserListResponse, error) {
 	out := new(UserListResponse)
 	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/UserList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) Data(ctx context.Context, in *DataRequest, opts ...grpc.CallOption) (*DataResponse, error) {
+	out := new(DataResponse)
+	err := c.cc.Invoke(ctx, "/gitlab.ozon.dev.iTukaev.homework.api.User/Data", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +170,10 @@ type UserServer interface {
 	//
 	// Returns all users from DB
 	UserList(context.Context, *UserListRequest) (*UserListResponse, error)
+	// Get users list
+	//
+	// Returns all users from DB
+	Data(context.Context, *DataRequest) (*DataResponse, error)
 	// Get all users
 	//
 	// Returns all users from DB
@@ -182,6 +199,9 @@ func (UnimplementedUserServer) UserGet(context.Context, *UserGetRequest) (*UserG
 }
 func (UnimplementedUserServer) UserList(context.Context, *UserListRequest) (*UserListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UserList not implemented")
+}
+func (UnimplementedUserServer) Data(context.Context, *DataRequest) (*DataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Data not implemented")
 }
 func (UnimplementedUserServer) UserAllList(*UserAllListRequest, User_UserAllListServer) error {
 	return status.Errorf(codes.Unimplemented, "method UserAllList not implemented")
@@ -289,6 +309,24 @@ func _User_UserList_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_Data_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).Data(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gitlab.ozon.dev.iTukaev.homework.api.User/Data",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).Data(ctx, req.(*DataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _User_UserAllList_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(UserAllListRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -336,6 +374,10 @@ var User_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UserList",
 			Handler:    _User_UserList_Handler,
+		},
+		{
+			MethodName: "Data",
+			Handler:    _User_Data_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

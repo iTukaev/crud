@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-redis/redismock/v8"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
@@ -26,6 +27,7 @@ var (
 func Test_Create(t *testing.T) {
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
+	client, _ := redismock.NewClientMock()
 
 	cases := []struct {
 		name      string
@@ -74,7 +76,7 @@ func Test_Create(t *testing.T) {
 					Return(c.createErr).MaxTimes(1),
 			)
 
-			userCtl := New(mockRepo, loggerPkg.NewFatal())
+			userCtl := New(mockRepo, loggerPkg.NewFatal(), client)
 			err := userCtl.Create(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -84,6 +86,7 @@ func Test_Create(t *testing.T) {
 func Test_Update(t *testing.T) {
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
+	client, _ := redismock.NewClientMock()
 
 	cases := []struct {
 		name      string
@@ -125,7 +128,7 @@ func Test_Update(t *testing.T) {
 					Return(c.updateErr).MaxTimes(1),
 			)
 
-			userCtl := New(mockRepo, loggerPkg.NewFatal())
+			userCtl := New(mockRepo, loggerPkg.NewFatal(), client)
 			err := userCtl.Update(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -135,6 +138,7 @@ func Test_Update(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
+	client, _ := redismock.NewClientMock()
 
 	cases := []struct {
 		name      string
@@ -176,7 +180,7 @@ func Test_Delete(t *testing.T) {
 					Return(c.deleteErr).MaxTimes(1),
 			)
 
-			userCtl := New(mockRepo, loggerPkg.NewFatal())
+			userCtl := New(mockRepo, loggerPkg.NewFatal(), client)
 			err := userCtl.Delete(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 		})
@@ -186,6 +190,7 @@ func Test_Delete(t *testing.T) {
 func Test_Get(t *testing.T) {
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
+	client, _ := redismock.NewClientMock()
 
 	cases := []struct {
 		name    string
@@ -218,7 +223,7 @@ func Test_Get(t *testing.T) {
 					Return(c.expUser, c.getErr).Times(1),
 			)
 
-			userCtl := New(mockRepo, loggerPkg.NewFatal())
+			userCtl := New(mockRepo, loggerPkg.NewFatal(), client)
 			expUser, err := userCtl.Get(context.Background(), c.user)
 			assert.ErrorIs(t, err, c.expErr)
 			assert.Equal(t, expUser, c.expUser)
@@ -229,6 +234,7 @@ func Test_Get(t *testing.T) {
 func Test_List(t *testing.T) {
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
+	client, _ := redismock.NewClientMock()
 
 	cases := []struct {
 		name    string
@@ -246,7 +252,7 @@ func Test_List(t *testing.T) {
 			name:    "failed UserList unexpected error",
 			listErr: errorsPkg.ErrUnexpected,
 			expErr:  errorsPkg.ErrUnexpected,
-			expList: make([]models.User, 0),
+			expList: nil,
 		},
 	}
 
@@ -258,7 +264,7 @@ func Test_List(t *testing.T) {
 					Return(c.expList, c.listErr).Times(1),
 			)
 
-			userCtl := New(mockRepo, loggerPkg.NewFatal())
+			userCtl := New(mockRepo, loggerPkg.NewFatal(), client)
 			expList, err := userCtl.List(context.Background(), true, 1, 1)
 			assert.ErrorIs(t, err, c.expErr)
 			assert.Equal(t, expList, c.expList)

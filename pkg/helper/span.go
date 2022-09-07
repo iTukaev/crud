@@ -2,7 +2,6 @@ package helper
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Shopify/sarama"
 	"github.com/opentracing/opentracing-go"
@@ -22,8 +21,14 @@ func StartNewSpan(ctx context.Context, name string, stop chan struct{}) {
 	<-stop
 }
 
-func InjectSpanIntoMessage(span opentracing.Span, msg *sarama.ProducerMessage) error {
-	headers := make(map[string]string)
+func InjectHeaders(ctx context.Context, msg *sarama.ProducerMessage) error {
+	span := opentracing.SpanFromContext(ctx)
+	uid, pub := ExtractUidPubFromCtx(ctx)
+	headers := map[string]string{
+		uidKey: uid,
+		pubKey: pub,
+	}
+
 	if err := opentracing.GlobalTracer().Inject(
 		span.Context(),
 		opentracing.TextMap,
@@ -49,9 +54,9 @@ func GetSpanFromMessage(msg *sarama.ConsumerMessage, operationName string) opent
 
 	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
 	if err != nil {
-		fmt.Println(err)
 		return opentracing.StartSpan(operationName)
 	}
+
 	return opentracing.StartSpan(
 		operationName,
 		opentracing.FollowsFrom(spanContext),

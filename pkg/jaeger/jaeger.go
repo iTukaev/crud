@@ -10,8 +10,7 @@ import (
 
 func New(service, host string) (opentracing.Tracer, io.Closer, error) {
 	headerCfg := jaeger.HeadersConfig{
-		TraceContextHeaderName:   "uber-trace-id",
-		TraceBaggageHeaderPrefix: "uberctx-",
+		TraceContextHeaderName: "uber-trace-id",
 	}
 	cfg := &config.Configuration{
 		ServiceName: service,

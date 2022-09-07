@@ -1,6 +1,9 @@
 package config
 
-import pgModels "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres/models"
+import (
+	pgModels "gitlab.ozon.dev/iTukaev/homework/internal/repo/postgres/models"
+	redisPkg "gitlab.ozon.dev/iTukaev/homework/pkg/redis"
+)
 
 type Interface interface {
 	Transport
@@ -20,11 +23,12 @@ type Transport interface {
 	GRPCAddr() string
 	GRPCDataAddr() string
 	HTTPAddr() string
+	HTTPDataAddr() string
 }
 
 type Data interface {
-	RepoAddr() string
 	PGConfig() pgModels.Config
 	Local() bool
 	WorkersCount() int
+	RedisConfig() redisPkg.Config
 }

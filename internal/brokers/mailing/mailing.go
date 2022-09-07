@@ -1,108 +1,114 @@
 package mailing
 
 import (
-	"encoding/json"
-	"math/rand"
+	"context"
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/pkg/errors"
+	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 
 	"gitlab.ozon.dev/iTukaev/homework/internal/consts"
-	"gitlab.ozon.dev/iTukaev/homework/internal/pkg/core/user/models"
+	"gitlab.ozon.dev/iTukaev/homework/pkg/adaptor"
+	pb "gitlab.ozon.dev/iTukaev/homework/pkg/api"
 	"gitlab.ozon.dev/iTukaev/homework/pkg/helper"
 )
 
 const (
 	mailingService = "mailing"
+
+	expirationCached = 10 * time.Minute
 )
 
 type sender interface {
-	sendSuccess(msg *sarama.ConsumerMessage) error
-	sendError(msg *sarama.ConsumerMessage) error
+	sendSuccess(ctx context.Context, msg *sarama.ConsumerMessage) error
+	sendError(ctx context.Context, msg *sarama.ConsumerMessage) error
 }
 
-func newSender(logger *zap.SugaredLogger, producer sarama.SyncProducer) sender {
+func newSender(logger *zap.SugaredLogger, producer sarama.SyncProducer, client *redis.Client) sender {
 	return &core{
 		producer: producer,
 		logger:   logger,
+		cache:    client,
 	}
 }
 
 type core struct {
 	producer sarama.SyncProducer
 	logger   *zap.SugaredLogger
+	cache    *redis.Client
 }
 
-func (c *core) sendSuccess(msg *sarama.ConsumerMessage) error {
+func (c *core) sendSuccess(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, mailingService)
 	defer span.Finish()
+	uid, pub := helper.ExtractUidPubFromMessage(msg)
 
-	var user models.User
-	if err := json.Unmarshal(msg.Value, &user); err != nil {
-		return errors.Wrap(err, "unmarshal")
-	}
-
-	if randError() == nil {
-		c.logger.Infof("result sended success [%s] [%s]", msg.Key, msg.Value)
-		return nil
-	}
-
-	message := &sarama.ProducerMessage{
-		Topic: consts.TopicMailing,
-		Key:   sarama.ByteEncoder(msg.Key),
-		Value: sarama.ByteEncoder(msg.Value),
-	}
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
-	}
-
-	_, _, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
+	switch pub {
+	case pb.Wait_pub.String():
+		if err := c.cache.Publish(ctx, string(msg.Key), msg.Value).Err(); err != nil {
+			if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+				Topic:   consts.TopicMailing,
+				Key:     sarama.ByteEncoder(msg.Key),
+				Value:   sarama.ByteEncoder(msg.Value),
+				Headers: adaptor.ConsumerHeaderToProducer(msg.Headers),
+			}); err != nil {
+				return err
+			}
+		}
+	case pb.Wait_cache.String():
+		if err := c.cache.Set(ctx, uid, msg.Value, expirationCached).Err(); err != nil {
+			if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+				Topic:   consts.TopicMailing,
+				Key:     sarama.ByteEncoder(msg.Key),
+				Value:   sarama.ByteEncoder(msg.Value),
+				Headers: adaptor.ConsumerHeaderToProducer(msg.Headers),
+			}); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-func (c *core) sendError(msg *sarama.ConsumerMessage) error {
+func (c *core) sendError(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	span := helper.GetSpanFromMessage(msg, mailingService)
 	defer span.Finish()
+	uid, pub := helper.ExtractUidPubFromMessage(msg)
 
-	var user models.User
-	if err := json.Unmarshal(msg.Value, &user); err != nil {
-		return errors.Wrap(err, "message unmarshal")
-	}
-
-	if randError() == nil {
-		c.logger.Infof("error sended success [%s] [%s]", msg.Key, msg.Value)
-		return nil
-	}
-	message := &sarama.ProducerMessage{
-		Topic: consts.TopicError,
-		Key:   sarama.ByteEncoder(msg.Key),
-		Value: sarama.ByteEncoder(msg.Value),
-	}
-	if err := helper.InjectSpanIntoMessage(span, message); err != nil {
-		return err
-	}
-
-	_, _, err := c.producer.SendMessage(message)
-	if err != nil {
-		c.logger.Errorf("send: %v", err)
-		return err
+	switch pub {
+	case pb.Wait_pub.String():
+		if err := c.cache.Set(ctx, string(msg.Key), msg.Value, expirationCached).Err(); err != nil {
+			if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+				Topic:   consts.TopicError,
+				Key:     sarama.ByteEncoder(msg.Key),
+				Value:   sarama.ByteEncoder(msg.Value),
+				Headers: adaptor.ConsumerHeaderToProducer(msg.Headers),
+			}); err != nil {
+				return err
+			}
+		}
+	case pb.Wait_cache.String():
+		if err := c.cache.Publish(ctx, uid, msg.Value).Err(); err != nil {
+			if err = c.sendMessageWithCtx(ctx, &sarama.ProducerMessage{
+				Topic:   consts.TopicError,
+				Key:     sarama.ByteEncoder(msg.Key),
+				Value:   sarama.ByteEncoder(msg.Value),
+				Headers: adaptor.ConsumerHeaderToProducer(msg.Headers),
+			}); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-func randError() error {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	if rand.Intn(20) > 15 {
-		return errors.New("sending error")
+func (c *core) sendMessageWithCtx(ctx context.Context, message *sarama.ProducerMessage) error {
+	if err := helper.InjectHeaders(ctx, message); err != nil {
+		return err
 	}
-	return nil
+	_, _, err := c.producer.SendMessage(message)
+	return err
 }
